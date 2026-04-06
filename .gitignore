@@ -1,0 +1,27 @@
+# Binary
+/odin
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+.claude
+CLAUDE.md
+sessionlogs
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+dist/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Database
+*.db
+*.db-wal
+*.db-shm
