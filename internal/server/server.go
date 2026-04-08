@@ -1,21 +1,30 @@
 package server
 
 import (
+	"encoding/json"
 	"io/fs"
 	"net/http"
+	"time"
+
+	"github.com/asgardehs/odin/internal/audit"
+	"github.com/asgardehs/odin/internal/auth"
 )
 
 // Server is the Odin HTTP server.
 type Server struct {
 	mux      *http.ServeMux
 	frontend fs.FS
+	audit    *audit.Store
+	auth     auth.Authenticator
 }
 
 // New creates a server that serves the embedded frontend and API routes.
-func New(frontend fs.FS) *Server {
+func New(frontend fs.FS, authenticator auth.Authenticator, auditStore *audit.Store) *Server {
 	s := &Server{
 		mux:      http.NewServeMux(),
 		frontend: frontend,
+		audit:    auditStore,
+		auth:     authenticator,
 	}
 	s.routes()
 	return s
@@ -30,6 +39,10 @@ func (s *Server) ListenAndServe(addr string) error {
 func (s *Server) routes() {
 	// API routes.
 	s.mux.HandleFunc("GET /api/health", s.handleHealth)
+	s.mux.HandleFunc("POST /api/auth/verify", s.handleAuthVerify)
+	s.mux.HandleFunc("GET /api/auth/whoami", s.handleWhoAmI)
+	s.mux.HandleFunc("GET /api/audit/{module}/{entityID}", s.handleAuditHistory)
+	s.mux.HandleFunc("POST /api/audit/export", s.handleAuditExport)
 
 	// Frontend: serve embedded SPA. Non-file paths fall back to index.html
 	// so React Router can handle client-side routes.
@@ -39,6 +52,104 @@ func (s *Server) routes() {
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(`{"status":"ok"}`))
+}
+
+// handleAuthVerify checks OS credentials. Returns 200 on success, 401 on failure.
+func (s *Server) handleAuthVerify(w http.ResponseWriter, r *http.Request) {
+	creds, ok := extractBasicAuth(r)
+	if !ok {
+		http.Error(w, `{"error":"missing credentials"}`, http.StatusUnauthorized)
+		return
+	}
+
+	if err := s.auth.Verify(creds.Username, creds.Password); err != nil {
+		http.Error(w, `{"error":"invalid credentials"}`, http.StatusUnauthorized)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"status":"ok"}`))
+}
+
+// handleWhoAmI returns the OS username of the process owner.
+func (s *Server) handleWhoAmI(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"user": s.auth.CurrentUser(),
+	})
+}
+
+// handleAuditHistory returns the audit trail for a specific entity.
+// Requires Basic Auth — the audit store re-verifies credentials.
+func (s *Server) handleAuditHistory(w http.ResponseWriter, r *http.Request) {
+	creds, ok := extractBasicAuth(r)
+	if !ok {
+		http.Error(w, `{"error":"audit access requires authentication"}`, http.StatusUnauthorized)
+		return
+	}
+
+	module := r.PathValue("module")
+	entityID := r.PathValue("entityID")
+
+	entries, err := s.audit.History(module, entityID, creds)
+	if err != nil {
+		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(entries)
+}
+
+// exportRequest is the JSON body for the audit export endpoint.
+type exportRequest struct {
+	Start string `json:"start"` // RFC 3339
+	End   string `json:"end"`   // RFC 3339
+}
+
+// handleAuditExport returns all audit entries in a date range.
+// Requires Basic Auth.
+func (s *Server) handleAuditExport(w http.ResponseWriter, r *http.Request) {
+	creds, ok := extractBasicAuth(r)
+	if !ok {
+		http.Error(w, `{"error":"audit access requires authentication"}`, http.StatusUnauthorized)
+		return
+	}
+
+	var req exportRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+
+	start, err := time.Parse(time.RFC3339, req.Start)
+	if err != nil {
+		http.Error(w, `{"error":"invalid start time"}`, http.StatusBadRequest)
+		return
+	}
+	end, err := time.Parse(time.RFC3339, req.End)
+	if err != nil {
+		http.Error(w, `{"error":"invalid end time"}`, http.StatusBadRequest)
+		return
+	}
+
+	entries, err := s.audit.Export(start, end, creds)
+	if err != nil {
+		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(entries)
+}
+
+// extractBasicAuth pulls credentials from the Authorization header.
+func extractBasicAuth(r *http.Request) (auth.Credentials, bool) {
+	username, password, ok := r.BasicAuth()
+	if !ok {
+		return auth.Credentials{}, false
+	}
+	return auth.Credentials{Username: username, Password: password}, true
 }
 
 // spaHandler serves static files from the FS, falling back to index.html

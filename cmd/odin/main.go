@@ -8,10 +8,12 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"syscall"
 
 	odin "github.com/asgardehs/odin"
+	"github.com/asgardehs/odin/internal/audit"
 	"github.com/asgardehs/odin/internal/server"
 )
 
@@ -24,8 +26,21 @@ func main() {
 		log.Fatalf("embedded frontend not found: %v", err)
 	}
 
+	// Set up OS-level authenticator.
+	authenticator := newAuthenticator()
+
+	// Set up git-backed audit trail.
+	dataDir, err := odinDataDir()
+	if err != nil {
+		log.Fatalf("data directory: %v", err)
+	}
+	auditStore, err := audit.NewStore(filepath.Join(dataDir, "audit"), authenticator)
+	if err != nil {
+		log.Fatalf("audit store: %v", err)
+	}
+
 	addr := "odin.localhost:8080"
-	srv := server.New(dist)
+	srv := server.New(dist, authenticator, auditStore)
 
 	// Graceful shutdown on interrupt.
 	stop := make(chan os.Signal, 1)
