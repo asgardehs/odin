@@ -1,0 +1,1249 @@
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:  <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix ehs:   <http://example.org/ehs-ontology#> .
+
+# ============================================================
+# ONTOLOGY HEADER
+# ============================================================
+
+<http://example.org/ehs-ontology> rdf:type owl:Ontology ;
+    dcterms:title "EHS Ontology: Employee–Hazard Bipolar Model"@en ;
+    dcterms:description """An ontology for Environmental Health & Safety (EHS) management
+    structured as a bipolar model with Employee and Hazard as the two poles, mediated by
+    the 5 E's of Safety (Education, Encouragement, Engineering, Enforcement, Evaluation)
+    as the intervention processes between them.
+
+    The Hazard pole is described by 7 core Industrial Hygiene concepts (Toxicity, Exposure,
+    Dose-Response, Routes of Entry, Occupational Exposure Limits, Time-Concentration
+    Relationship, Individual Susceptibility).
+
+    The Hazard Type taxonomy (Physical, Mechanical, Chemical, Biological, Psychosocial,
+    Ergonomic, Electrical) — adapted from Badea et al. (2024) Figure 5 — serves as the
+    compliance-activation classifier that determines which regulatory frameworks
+    (OSHA, EPA, ISO, NFPA, DOT, NRC, MSHA, ANSI) fire downstream.
+
+    Integrates the ARECC decision-making framework (Anticipate, Recognize, Evaluate,
+    Control, Confirm) and the Hierarchy of Controls."""@en ;
+    dcterms:creator "Synthesized from Badea et al. (2024), AIHA ARECC Framework, OSHA HCS, and IH foundational principles" ;
+    dcterms:date "2026-04-08"^^xsd:date ;
+    owl:versionInfo "2.0" ;
+    rdfs:comment """v2.0 additions:
+    - CompoundHazardProfile: multi-type overlap scenarios where a single situation
+      involves multiple HazardTypes, firing the union of all constituent regulatory frameworks.
+    - ActionContext taxonomy: the action being performed at the time of an incident
+      (Transportation, Storage, Maintenance, Emergency Response, Waste Handling, etc.)
+      which modifies which regulatory frameworks activate.
+    - ContextualCondition modifiers: ContainmentStatus, LocationContext, QuantityThreshold
+      that further refine the regulatory routing.
+    - ContextualComplianceActivation: the full routing class that combines HazardType(s) +
+      ActionContext + ContextualConditions to determine the precise set of frameworks fired.
+    - Worked scenario instances demonstrating the routing logic."""@en .
+
+
+# ============================================================
+# POLE 1: EMPLOYEE
+# ============================================================
+
+ehs:Employee rdf:type owl:Class ;
+    rdfs:label "Employee"@en ;
+    skos:definition "A worker or individual in a workplace who may be exposed to hazards. One of the two poles of the EHS bipolar model."@en ;
+    rdfs:comment "The human pole of the ontology. All safety processes ultimately protect this entity."@en .
+
+ehs:WorkerCharacteristic rdf:type owl:Class ;
+    rdfs:label "Worker Characteristic"@en ;
+    skos:definition "Attributes of a worker that influence their hazard susceptibility and safety needs."@en .
+
+ehs:JobRole rdf:type owl:Class ;
+    rdfs:subClassOf ehs:WorkerCharacteristic ;
+    rdfs:label "Job Role"@en ;
+    skos:definition "The occupational role or position held by the employee."@en .
+
+ehs:TrainingStatus rdf:type owl:Class ;
+    rdfs:subClassOf ehs:WorkerCharacteristic ;
+    rdfs:label "Training Status"@en ;
+    skos:definition "The current state of safety training and competency for an employee."@en .
+
+ehs:HealthStatus rdf:type owl:Class ;
+    rdfs:subClassOf ehs:WorkerCharacteristic ;
+    rdfs:label "Health Status"@en ;
+    skos:definition "The baseline health condition, medical surveillance results, and susceptibility factors of a worker."@en .
+
+ehs:SimilarExposureGroup rdf:type owl:Class ;
+    rdfs:label "Similar Exposure Group (SEG)"@en ;
+    skos:definition "A group of workers having the same general exposure profile for the agent(s) being studied because of the similarity and frequency of the tasks they perform, the materials and processes with which they work, and the similarity of the way they perform the tasks."@en .
+
+
+# ============================================================
+# POLE 2: HAZARD
+# ============================================================
+
+ehs:Hazard rdf:type owl:Class ;
+    rdfs:label "Hazard"@en ;
+    skos:definition "A source or situation with potential for harm in terms of injury, ill health, damage to property, environment, or a combination of these. The second pole of the EHS bipolar model."@en ;
+    rdfs:comment "The hazard pole. Characterized by the 7 core IH concepts and classified by Hazard Type."@en .
+
+
+# ============================================================
+# NEXUS: HAZARDOUS EXPOSURE SITUATION
+# ============================================================
+
+ehs:HazardousExposureSituation rdf:type owl:Class ;
+    rdfs:label "Hazardous Exposure Situation"@en ;
+    skos:definition "The nexus where an Employee encounters a Hazard — the operational intersection of the two poles. Adapted from Badea et al. (2024) 'Hazardous Situation' concept."@en ;
+    rdfs:comment "This is the central event class. It connects Employee (via isExposedTo) and Hazard (via involvesHazard), is mediated by the 5 E's, assessed by ARECC, and produces Outcomes."@en .
+
+
+# ============================================================
+# THE 5 E's — MEDIATING PROCESSES (Employee ↔ Hazard)
+# ============================================================
+
+ehs:SafetyProcess rdf:type owl:Class ;
+    rdfs:label "Safety Process (5 E's)"@en ;
+    skos:definition "The five intervention processes that mediate the relationship between Employee and Hazard. Together they form a complete safety management system."@en .
+
+ehs:Education rdf:type owl:Class ;
+    rdfs:subClassOf ehs:SafetyProcess ;
+    rdfs:label "Education"@en ;
+    skos:definition "Providing workers with knowledge of hazards, safe work practices, and risk management skills. Includes role-specific instruction, hands-on demonstrations, hazard recognition exercises, scenario-based learning, and leadership safety training."@en .
+
+ehs:Encouragement rdf:type owl:Class ;
+    rdfs:subClassOf ehs:SafetyProcess ;
+    rdfs:label "Encouragement"@en ;
+    skos:definition "Motivating and reinforcing safe behaviors through positive recognition, incentive programs, peer-to-peer safety coaching, safety culture building, and leadership engagement in safety activities."@en .
+
+ehs:Engineering rdf:type owl:Class ;
+    rdfs:subClassOf ehs:SafetyProcess ;
+    rdfs:label "Engineering"@en ;
+    skos:definition "The design, development, analysis, implementation, and maintenance of physical controls that eliminate or reduce hazards at the source. Includes machine guarding, ventilation systems, ergonomic design, slip-resistant surfaces, automated shutoffs, and noise dampening."@en .
+
+ehs:Enforcement rdf:type owl:Class ;
+    rdfs:subClassOf ehs:SafetyProcess ;
+    rdfs:label "Enforcement"@en ;
+    skos:definition "Ensuring consistent adherence to safety rules, documented disciplinary procedures, supervisor accountability, and corrective action processes. Not purely punitive — establishes accountability when combined with education and encouragement."@en .
+
+ehs:Evaluation rdf:type owl:Class ;
+    rdfs:subClassOf ehs:SafetyProcess ;
+    rdfs:label "Evaluation"@en ;
+    skos:definition "Continuous measurement and improvement of safety systems using both lagging indicators (TRIR, DART rates, incident frequency) and leading indicators (near-miss frequency, audit completion rates, corrective action closure times, training compliance metrics)."@en .
+
+
+# ============================================================
+# 7 CORE INDUSTRIAL HYGIENE CONCEPTS (Hazard-side descriptors)
+# ============================================================
+
+ehs:IndustrialHygieneConcept rdf:type owl:Class ;
+    rdfs:label "Industrial Hygiene Concept"@en ;
+    skos:definition "The seven foundational scientific concepts that describe and quantify the hazard pole. These are the lenses through which a hazard is understood, measured, and managed."@en .
+
+ehs:Toxicity rdf:type owl:Class ;
+    rdfs:subClassOf ehs:IndustrialHygieneConcept ;
+    rdfs:label "Toxicity"@en ;
+    skos:definition "The inherent capacity of a substance to cause adverse biological effects. Includes acute toxicity (immediate effects from short-term exposure) and chronic toxicity (delayed effects from long-term exposure). Quantified by LD50, LC50, NOEL, LOEL. Per Paracelsus: 'The dose makes the poison.'"@en .
+
+ehs:Exposure rdf:type owl:Class ;
+    rdfs:subClassOf ehs:IndustrialHygieneConcept ;
+    rdfs:label "Exposure"@en ;
+    skos:definition "The contact between a worker and a hazardous agent, characterized by concentration, duration, and frequency. Exposure is the bridge between a hazard existing and a hazard causing harm. Without exposure, toxicity alone does not produce risk."@en .
+
+ehs:DoseResponseRelationship rdf:type owl:Class ;
+    rdfs:subClassOf ehs:IndustrialHygieneConcept ;
+    rdfs:label "Dose-Response Relationship"@en ;
+    skos:definition "The quantitative relationship between the amount of agent absorbed (dose) and the magnitude of the biological effect (response). The cornerstone of toxicology. Increasing dose increases effect. Forms the scientific basis for occupational exposure limits."@en .
+
+ehs:RouteOfEntry rdf:type owl:Class ;
+    rdfs:subClassOf ehs:IndustrialHygieneConcept ;
+    rdfs:label "Route of Entry"@en ;
+    skos:definition "The pathway by which a hazardous agent reaches the body and is absorbed. The four routes: inhalation (most common occupational pathway), dermal absorption, ingestion, and injection. Each route determines the appropriate monitoring strategy and control measures."@en .
+
+ehs:OccupationalExposureLimit rdf:type owl:Class ;
+    rdfs:subClassOf ehs:IndustrialHygieneConcept ;
+    rdfs:label "Occupational Exposure Limit (OEL)"@en ;
+    skos:definition "Regulatory and recommended concentration limits for hazardous agents in the workplace atmosphere. Includes OSHA PELs, ACGIH TLVs, NIOSH RELs, and AIHA WEELs. Derived from dose-response data with safety factors applied."@en .
+
+ehs:TimeConcentrationRelationship rdf:type owl:Class ;
+    rdfs:subClassOf ehs:IndustrialHygieneConcept ;
+    rdfs:label "Time-Concentration Relationship"@en ;
+    skos:definition "The interplay between exposure duration and agent concentration that determines total dose. Expressed as Time-Weighted Average (TWA), Short-Term Exposure Limit (STEL), and Ceiling values. Low-dose, long-term exposures can be more dangerous than short, high-dose events."@en .
+
+ehs:IndividualSusceptibility rdf:type owl:Class ;
+    rdfs:subClassOf ehs:IndustrialHygieneConcept ;
+    rdfs:label "Individual Susceptibility"@en ;
+    skos:definition "Variation in individual response to hazardous exposures based on genetics, pre-existing health conditions, age, sex, nutritional status, concurrent exposures, and other biological factors. Explains why OELs cannot protect all workers equally."@en .
+
+# --- Route of Entry subclasses ---
+
+ehs:Inhalation rdf:type owl:Class ;
+    rdfs:subClassOf ehs:RouteOfEntry ;
+    rdfs:label "Inhalation"@en ;
+    skos:definition "Exposure via breathing airborne contaminants (gases, vapors, dusts, fumes, aerosols) into the respiratory system. The most common and dangerous route of occupational exposure."@en .
+
+ehs:DermalAbsorption rdf:type owl:Class ;
+    rdfs:subClassOf ehs:RouteOfEntry ;
+    rdfs:label "Dermal Absorption"@en ;
+    skos:definition "Exposure via absorption through the skin, causing local effects or systemic toxicity."@en .
+
+ehs:Ingestion rdf:type owl:Class ;
+    rdfs:subClassOf ehs:RouteOfEntry ;
+    rdfs:label "Ingestion"@en ;
+    skos:definition "Exposure via the digestive system, typically from contaminated hands, food, or work surfaces."@en .
+
+ehs:Injection rdf:type owl:Class ;
+    rdfs:subClassOf ehs:RouteOfEntry ;
+    rdfs:label "Injection"@en ;
+    skos:definition "Exposure via puncture through the skin from contaminated needles, nails, or sharp objects."@en .
+
+
+# ============================================================
+# HAZARD TYPE TAXONOMY — COMPLIANCE ACTIVATION CLASSIFIER
+# (Adapted from Badea et al. 2024, Figure 5)
+# ============================================================
+
+ehs:HazardType rdf:type owl:Class ;
+    rdfs:label "Hazard Type"@en ;
+    skos:definition "The classification of a hazard by its physical nature. This is the compliance-activation classifier — each type determines which regulatory frameworks fire downstream. Adapted from Badea et al. (2024) Figure 5 'Types' branch off Hazardous Situation."@en ;
+    rdfs:comment "KEY INSIGHT: HazardType is not just a taxonomy label — it is a routing mechanism. When a HazardousExposureSituation is classified by type, that classification activates specific regulatory frameworks, standards, and compliance requirements."@en .
+
+ehs:PhysicalHazard rdf:type owl:Class ;
+    rdfs:subClassOf ehs:HazardType ;
+    rdfs:label "Physical Hazard"@en ;
+    skos:definition "Hazards from physical agents: noise, vibration, ionizing/non-ionizing radiation, temperature extremes, pressure. Activates OSHA general industry standards, NRC regulations for radiation, ACGIH TLVs for physical agents."@en .
+
+ehs:MechanicalHazard rdf:type owl:Class ;
+    rdfs:subClassOf ehs:HazardType ;
+    rdfs:label "Mechanical Hazard"@en ;
+    skos:definition "Hazards from moving parts, equipment, machinery, struck-by/caught-in/caught-between scenarios. Activates OSHA machine guarding standards (29 CFR 1910 Subpart O), ANSI machine safety standards."@en .
+
+ehs:ChemicalHazard rdf:type owl:Class ;
+    rdfs:subClassOf ehs:HazardType ;
+    rdfs:label "Chemical Hazard"@en ;
+    skos:definition "Hazards from chemical substances — health hazards (acute toxicity, carcinogenicity, reproductive toxicity) and physical hazards (flammable, explosive, oxidizing, reactive). Activates OSHA HCS (29 CFR 1910.1200), GHS classification, EPA RCRA/CERCLA/EPCRA, ACGIH TLVs."@en .
+
+ehs:BiologicalHazard rdf:type owl:Class ;
+    rdfs:subClassOf ehs:HazardType ;
+    rdfs:label "Biological Hazard"@en ;
+    skos:definition "Hazards from biological agents: bacteria, viruses, fungi, parasites, bloodborne pathogens, mold. Activates OSHA Bloodborne Pathogens standard (29 CFR 1910.1030), CDC/NIOSH guidelines, EPA regulations for biohazardous waste."@en .
+
+ehs:PsychosocialHazard rdf:type owl:Class ;
+    rdfs:subClassOf ehs:HazardType ;
+    rdfs:label "Psychosocial Hazard"@en ;
+    skos:definition "Hazards from workplace stress, violence, harassment, shift work, work organization factors. Activates OSHA General Duty Clause, ISO 45003 (Psychological H&S at Work), state-level workplace violence prevention laws."@en .
+
+ehs:ErgonomicHazard rdf:type owl:Class ;
+    rdfs:subClassOf ehs:HazardType ;
+    rdfs:label "Ergonomic Hazard"@en ;
+    skos:definition "Hazards from repetitive motions, awkward postures, heavy lifting, forceful exertions, vibration — leading to musculoskeletal disorders. Activates OSHA General Duty Clause ergonomic citations, NIOSH lifting equation, ANSI Z365."@en .
+
+ehs:ElectricalHazard rdf:type owl:Class ;
+    rdfs:subClassOf ehs:HazardType ;
+    rdfs:label "Electrical Hazard"@en ;
+    skos:definition "Hazards from electrical energy — shock, arc flash, arc blast, electrocution. Activates OSHA electrical standards (29 CFR 1910 Subpart S), NFPA 70E, NFPA 70 (NEC), ANSI C2."@en .
+
+
+# ============================================================
+# REGULATORY FRAMEWORKS (Activated by Hazard Type)
+# ============================================================
+
+ehs:RegulatoryFramework rdf:type owl:Class ;
+    rdfs:label "Regulatory Framework"@en ;
+    skos:definition "A body of regulations, standards, or guidelines that govern workplace safety practices. Activated when a HazardousExposureSituation is classified by HazardType."@en .
+
+ehs:OSHA_Framework rdf:type owl:Class ;
+    rdfs:subClassOf ehs:RegulatoryFramework ;
+    rdfs:label "OSHA (29 CFR 1910/1926)"@en ;
+    skos:definition "Occupational Safety and Health Administration standards. General Industry (29 CFR 1910), Construction (29 CFR 1926), Maritime, Agriculture. Enforced by USDOL."@en .
+
+ehs:EPA_Framework rdf:type owl:Class ;
+    rdfs:subClassOf ehs:RegulatoryFramework ;
+    rdfs:label "EPA (40 CFR)"@en ;
+    skos:definition "Environmental Protection Agency regulations: RCRA (hazardous waste), CERCLA (Superfund), CAA (Clean Air), CWA (Clean Water), TSCA (Toxic Substances), EPCRA (Emergency Planning)."@en .
+
+ehs:ISO_Framework rdf:type owl:Class ;
+    rdfs:subClassOf ehs:RegulatoryFramework ;
+    rdfs:label "ISO Standards"@en ;
+    skos:definition "International Organization for Standardization management system standards: ISO 45001 (OHS Management), ISO 14001 (Environmental Management), ISO 45003 (Psychological H&S)."@en .
+
+ehs:NFPA_Framework rdf:type owl:Class ;
+    rdfs:subClassOf ehs:RegulatoryFramework ;
+    rdfs:label "NFPA Standards"@en ;
+    skos:definition "National Fire Protection Association standards: NFPA 70 (NEC), NFPA 70E (Electrical Safety), NFPA 30 (Flammable Liquids), NFPA 101 (Life Safety Code)."@en .
+
+ehs:DOT_Framework rdf:type owl:Class ;
+    rdfs:subClassOf ehs:RegulatoryFramework ;
+    rdfs:label "DOT/PHMSA (49 CFR)"@en ;
+    skos:definition "Department of Transportation / Pipeline and Hazardous Materials Safety Administration regulations for hazardous materials transportation."@en .
+
+ehs:NRC_Framework rdf:type owl:Class ;
+    rdfs:subClassOf ehs:RegulatoryFramework ;
+    rdfs:label "NRC (10 CFR)"@en ;
+    skos:definition "Nuclear Regulatory Commission regulations for ionizing radiation, radioactive materials, and nuclear facilities."@en .
+
+ehs:MSHA_Framework rdf:type owl:Class ;
+    rdfs:subClassOf ehs:RegulatoryFramework ;
+    rdfs:label "MSHA (30 CFR)"@en ;
+    skos:definition "Mine Safety and Health Administration standards for mining operations."@en .
+
+ehs:ANSI_Framework rdf:type owl:Class ;
+    rdfs:subClassOf ehs:RegulatoryFramework ;
+    rdfs:label "ANSI/ASSE Standards"@en ;
+    skos:definition "American National Standards Institute / American Society of Safety Engineers voluntary consensus standards: Z10 (OHS Management), Z244.1 (Lockout/Tagout), Z365 (Ergonomics), Z490.1 (Safety Training)."@en .
+
+ehs:GHS_Framework rdf:type owl:Class ;
+    rdfs:subClassOf ehs:RegulatoryFramework ;
+    rdfs:label "GHS (Globally Harmonized System)"@en ;
+    skos:definition "United Nations Globally Harmonized System of Classification and Labelling of Chemicals. Adopted by OSHA in the revised Hazard Communication Standard."@en .
+
+ehs:ACGIH_Framework rdf:type owl:Class ;
+    rdfs:subClassOf ehs:RegulatoryFramework ;
+    rdfs:label "ACGIH Guidelines"@en ;
+    skos:definition "American Conference of Governmental Industrial Hygienists — publishes Threshold Limit Values (TLVs) and Biological Exposure Indices (BEIs) for chemical substances and physical agents."@en .
+
+ehs:NIOSH_Framework rdf:type owl:Class ;
+    rdfs:subClassOf ehs:RegulatoryFramework ;
+    rdfs:label "NIOSH Guidelines"@en ;
+    skos:definition "National Institute for Occupational Safety and Health — research and recommendations including RELs, NIOSH Lifting Equation, ergonomic guidelines, IDLH values, and Criteria Documents. Research arm of OSHA under the CDC."@en .
+
+ehs:USCG_Framework rdf:type owl:Class ;
+    rdfs:subClassOf ehs:RegulatoryFramework ;
+    rdfs:label "USCG (33/46 CFR)"@en ;
+    skos:definition "United States Coast Guard regulations for maritime hazmat incidents, port facility safety, and waterway spill response."@en .
+
+
+# ============================================================
+# COMPLIANCE ACTIVATION MAPPING (HazardType → RegulatoryFramework)
+# ============================================================
+
+ehs:ComplianceActivation rdf:type owl:Class ;
+    rdfs:label "Compliance Activation"@en ;
+    skos:definition "The mapping relationship where a Hazard Type classification triggers specific regulatory frameworks. This is the routing mechanism — the classifier that determines which compliance requirements fire downstream."@en ;
+    rdfs:comment "Derived from the insight that the 'Type' branch in Badea et al. Figure 5 is not merely descriptive but functionally activates regulatory pathways."@en .
+
+# Activation instances (which types activate which frameworks)
+ehs:ChemicalActivation rdf:type ehs:ComplianceActivation ;
+    rdfs:label "Chemical → Regulatory Activation"@en ;
+    ehs:triggeredByType ehs:ChemicalHazard ;
+    ehs:activatesFramework ehs:OSHA_Framework , ehs:EPA_Framework , ehs:GHS_Framework , ehs:ACGIH_Framework , ehs:DOT_Framework .
+
+ehs:PhysicalActivation rdf:type ehs:ComplianceActivation ;
+    rdfs:label "Physical → Regulatory Activation"@en ;
+    ehs:triggeredByType ehs:PhysicalHazard ;
+    ehs:activatesFramework ehs:OSHA_Framework , ehs:NRC_Framework , ehs:ACGIH_Framework .
+
+ehs:BiologicalActivation rdf:type ehs:ComplianceActivation ;
+    rdfs:label "Biological → Regulatory Activation"@en ;
+    ehs:triggeredByType ehs:BiologicalHazard ;
+    ehs:activatesFramework ehs:OSHA_Framework , ehs:EPA_Framework .
+
+ehs:ElectricalActivation rdf:type ehs:ComplianceActivation ;
+    rdfs:label "Electrical → Regulatory Activation"@en ;
+    ehs:triggeredByType ehs:ElectricalHazard ;
+    ehs:activatesFramework ehs:OSHA_Framework , ehs:NFPA_Framework , ehs:ANSI_Framework .
+
+ehs:MechanicalActivation rdf:type ehs:ComplianceActivation ;
+    rdfs:label "Mechanical → Regulatory Activation"@en ;
+    ehs:triggeredByType ehs:MechanicalHazard ;
+    ehs:activatesFramework ehs:OSHA_Framework , ehs:ANSI_Framework .
+
+ehs:ErgonomicActivation rdf:type ehs:ComplianceActivation ;
+    rdfs:label "Ergonomic → Regulatory Activation"@en ;
+    ehs:triggeredByType ehs:ErgonomicHazard ;
+    ehs:activatesFramework ehs:OSHA_Framework , ehs:ANSI_Framework , ehs:ISO_Framework .
+
+ehs:PsychosocialActivation rdf:type ehs:ComplianceActivation ;
+    rdfs:label "Psychosocial → Regulatory Activation"@en ;
+    ehs:triggeredByType ehs:PsychosocialHazard ;
+    ehs:activatesFramework ehs:OSHA_Framework , ehs:ISO_Framework .
+
+
+# ============================================================
+# ARECC FRAMEWORK (IH Decision-Making Process)
+# ============================================================
+
+ehs:ARECCProcess rdf:type owl:Class ;
+    rdfs:label "ARECC Process"@en ;
+    skos:definition "The AIHA Anticipate, Recognize, Evaluate, Control, and Confirm decision-making framework for industrial hygiene. An evidence-based, risk-informed process that structures how HazardousExposureSituations are assessed and managed."@en .
+
+ehs:Anticipate rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ARECCProcess ;
+    rdfs:label "Anticipate"@en ;
+    skos:definition "Proactively identifying potential hazards during design, planning, or before introduction of new processes, chemicals, or equipment. Added to the IH framework in 1994 by AIHA president Harry Ettinger."@en .
+
+ehs:Recognize rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ARECCProcess ;
+    rdfs:label "Recognize"@en ;
+    skos:definition "Identifying existing hazards through inspection, inventory, SDS review, observation, employee interviews, and review of incident/sampling data."@en .
+
+ehs:EvaluateARECC rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ARECCProcess ;
+    rdfs:label "Evaluate (ARECC)"@en ;
+    skos:definition "Qualitative and quantitative assessment of exposures — personal air sampling, direct-reading instruments, biological monitoring — compared against OELs. Synthesizes hazard assessment, exposure assessment, and population assessment."@en .
+
+ehs:ControlARECC rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ARECCProcess ;
+    rdfs:label "Control (ARECC)"@en ;
+    skos:definition "Implementing the hierarchy of controls to reduce or eliminate exposures: elimination, substitution, engineering controls, administrative controls, and PPE."@en .
+
+ehs:Confirm rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ARECCProcess ;
+    rdfs:label "Confirm"@en ;
+    skos:definition "Verifying that controls are effective, desired outcomes are achieved, and all ARECC steps are being followed. Added in 2011 to shift focus from controlling hazards to confirming protection from risks."@en .
+
+
+# ============================================================
+# HIERARCHY OF CONTROLS
+# ============================================================
+
+ehs:ControlMeasure rdf:type owl:Class ;
+    rdfs:label "Control Measure"@en ;
+    skos:definition "An intervention applied to reduce or eliminate hazard exposure, arranged in descending order of effectiveness per the Hierarchy of Controls."@en .
+
+ehs:Elimination rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ControlMeasure ;
+    rdfs:label "Elimination"@en ;
+    skos:definition "Physically removing the hazard. The most effective control."@en ;
+    ehs:hierarchyRank 1 .
+
+ehs:Substitution rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ControlMeasure ;
+    rdfs:label "Substitution"@en ;
+    skos:definition "Replacing the hazard with a less hazardous alternative. Must confirm the substitution does not create a 'regrettable substitution.'"@en ;
+    ehs:hierarchyRank 2 .
+
+ehs:EngineeringControl rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ControlMeasure ;
+    rdfs:label "Engineering Control"@en ;
+    skos:definition "Physical modifications to isolate workers from hazards — ventilation, enclosures, machine guards, interlocks, process changes."@en ;
+    ehs:hierarchyRank 3 .
+
+ehs:AdministrativeControl rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ControlMeasure ;
+    rdfs:label "Administrative/Work Practice Control"@en ;
+    skos:definition "Changes to work procedures, scheduling, training, rotation, signage, and warnings that reduce exposure duration or frequency."@en ;
+    ehs:hierarchyRank 4 .
+
+ehs:PPE rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ControlMeasure ;
+    rdfs:label "Personal Protective Equipment (PPE)"@en ;
+    skos:definition "The last barrier — respiratory protection, chemical protective clothing, gloves, eye/face protection, hearing protection. Least effective because it relies on consistent and correct worker usage."@en ;
+    ehs:hierarchyRank 5 .
+
+
+# ============================================================
+# BADEA-DERIVED STRUCTURE: WORK PROCESS & CONSEQUENCES
+# (Adapted from Figure 5 branches)
+# ============================================================
+
+ehs:WorkProcess rdf:type owl:Class ;
+    rdfs:label "Work Process"@en ;
+    skos:definition "The operational context in which a hazardous situation occurs. Includes the activity, environment, and workplace location."@en .
+
+ehs:Activity rdf:type owl:Class ;
+    rdfs:subClassOf ehs:WorkProcess ;
+    rdfs:label "Activity"@en ;
+    skos:definition "The specific task or operation being performed."@en .
+
+ehs:WorkEnvironment rdf:type owl:Class ;
+    rdfs:subClassOf ehs:WorkProcess ;
+    rdfs:label "Work Environment"@en ;
+    skos:definition "The physical and atmospheric conditions of the workspace."@en .
+
+ehs:WorkplaceLocation rdf:type owl:Class ;
+    rdfs:subClassOf ehs:WorkProcess ;
+    rdfs:label "Workplace Location"@en ;
+    skos:definition "The geographic or organizational setting — headquarters, temporary site, remote/mobile."@en .
+
+ehs:Consequence rdf:type owl:Class ;
+    rdfs:label "Consequence"@en ;
+    skos:definition "The result of a hazardous exposure — characterized by severity and impact."@en .
+
+ehs:Severity rdf:type owl:Class ;
+    rdfs:subClassOf ehs:Consequence ;
+    rdfs:label "Severity"@en ;
+    skos:definition "The degree of harm — moderate injury, medium injury, serious injury."@en .
+
+ehs:Impact rdf:type owl:Class ;
+    rdfs:subClassOf ehs:Consequence ;
+    rdfs:label "Impact"@en ;
+    skos:definition "The scope of effect — human resources, economic, environmental."@en .
+
+ehs:Outcome rdf:type owl:Class ;
+    rdfs:label "Outcome"@en ;
+    skos:definition "What the hazardous situation develops into — the end state."@en .
+
+ehs:Accident rdf:type owl:Class ;
+    rdfs:subClassOf ehs:Outcome ;
+    rdfs:label "Accident"@en ;
+    skos:definition "An unplanned event resulting in injury, death, or no injury. May cause temporary incapacity, disability, or death."@en .
+
+ehs:Incident rdf:type owl:Class ;
+    rdfs:subClassOf ehs:Outcome ;
+    rdfs:label "Incident"@en ;
+    skos:definition "An unplanned event that did not result in injury but had the potential to — includes near-misses."@en .
+
+ehs:OccupationalDisease rdf:type owl:Class ;
+    rdfs:subClassOf ehs:Outcome ;
+    rdfs:label "Occupational Disease"@en ;
+    skos:definition "A chronic health condition caused by workplace exposures — silicosis, lead poisoning, benzene-related leukemia, asbestosis, noise-induced hearing loss."@en .
+
+
+# ============================================================
+# RISK ASSESSMENT & MANAGEMENT
+# ============================================================
+
+ehs:RiskAssessment rdf:type owl:Class ;
+    rdfs:label "Risk Assessment"@en ;
+    skos:definition "The process of identifying hazards, evaluating exposures, and characterizing risk. Risk = Hazard x Exposure. Integrates hazard assessment, exposure assessment, and population assessment per ARECC."@en .
+
+ehs:RiskManagement rdf:type owl:Class ;
+    rdfs:label "Risk Management"@en ;
+    skos:definition "The application of controls and safety processes to reduce risk to acceptable levels. Includes the hierarchy of controls, safety plans, automated JHA, and real-time monitoring."@en .
+
+ehs:JobHazardAnalysis rdf:type owl:Class ;
+    rdfs:subClassOf ehs:RiskManagement ;
+    rdfs:label "Job Hazard Analysis (JHA)"@en ;
+    skos:definition "A systematic technique for identifying hazards associated with each step of a job task and determining the best way to control or eliminate them."@en .
+
+ehs:SafetyPlan rdf:type owl:Class ;
+    rdfs:subClassOf ehs:RiskManagement ;
+    rdfs:label "Safety Plan"@en ;
+    skos:definition "A documented plan specifying hazards, controls, responsibilities, and emergency procedures for a workplace or operation."@en .
+
+
+# ============================================================
+# OBJECT PROPERTIES (Relationships)
+# ============================================================
+
+# --- Core bipolar relationships ---
+
+ehs:isExposedTo rdf:type owl:ObjectProperty ;
+    rdfs:label "is exposed to"@en ;
+    rdfs:domain ehs:Employee ;
+    rdfs:range ehs:Hazard ;
+    skos:definition "Connects the Employee pole to the Hazard pole — the fundamental relationship of the EHS domain."@en .
+
+ehs:involvesHazard rdf:type owl:ObjectProperty ;
+    rdfs:label "involves hazard"@en ;
+    rdfs:domain ehs:HazardousExposureSituation ;
+    rdfs:range ehs:Hazard ;
+    skos:definition "Links a hazardous situation to the hazard(s) involved."@en .
+
+ehs:involvesEmployee rdf:type owl:ObjectProperty ;
+    rdfs:label "involves employee"@en ;
+    rdfs:domain ehs:HazardousExposureSituation ;
+    rdfs:range ehs:Employee ;
+    skos:definition "Links a hazardous situation to the employee(s) involved."@en .
+
+# --- 5 E's mediation ---
+
+ehs:mediatedBy rdf:type owl:ObjectProperty ;
+    rdfs:label "mediated by"@en ;
+    rdfs:domain ehs:HazardousExposureSituation ;
+    rdfs:range ehs:SafetyProcess ;
+    skos:definition "The 5 E's processes that mediate the Employee-Hazard relationship."@en .
+
+ehs:protects rdf:type owl:ObjectProperty ;
+    rdfs:label "protects"@en ;
+    rdfs:domain ehs:SafetyProcess ;
+    rdfs:range ehs:Employee ;
+    skos:definition "A safety process protects an employee from harm."@en .
+
+ehs:mitigates rdf:type owl:ObjectProperty ;
+    rdfs:label "mitigates"@en ;
+    rdfs:domain ehs:SafetyProcess ;
+    rdfs:range ehs:Hazard ;
+    skos:definition "A safety process mitigates the effect of a hazard."@en .
+
+# --- IH concept characterization ---
+
+ehs:characterizedBy rdf:type owl:ObjectProperty ;
+    rdfs:label "characterized by"@en ;
+    rdfs:domain ehs:Hazard ;
+    rdfs:range ehs:IndustrialHygieneConcept ;
+    skos:definition "A hazard is described through the lens of the 7 core IH concepts."@en .
+
+# --- Compliance activation (the key routing mechanism) ---
+
+ehs:hasHazardType rdf:type owl:ObjectProperty ;
+    rdfs:label "has hazard type"@en ;
+    rdfs:domain ehs:Hazard ;
+    rdfs:range ehs:HazardType ;
+    skos:definition "Classifies a hazard by its physical nature — the first step in compliance activation."@en .
+
+ehs:activatesRegulation rdf:type owl:ObjectProperty ;
+    rdfs:label "activates regulation"@en ;
+    rdfs:domain ehs:HazardType ;
+    rdfs:range ehs:RegulatoryFramework ;
+    skos:definition "THE COMPLIANCE ACTIVATION PROPERTY: A hazard type classification triggers specific regulatory frameworks. This is the routing mechanism from Badea et al. Figure 5 insight."@en .
+
+ehs:triggeredByType rdf:type owl:ObjectProperty ;
+    rdfs:label "triggered by type"@en ;
+    rdfs:domain ehs:ComplianceActivation ;
+    rdfs:range ehs:HazardType ;
+    skos:definition "Links a compliance activation record to its triggering hazard type."@en .
+
+ehs:activatesFramework rdf:type owl:ObjectProperty ;
+    rdfs:label "activates framework"@en ;
+    rdfs:domain ehs:ComplianceActivation ;
+    rdfs:range ehs:RegulatoryFramework ;
+    skos:definition "Links a compliance activation record to the frameworks it activates."@en .
+
+# --- ARECC assessment ---
+
+ehs:assessedBy rdf:type owl:ObjectProperty ;
+    rdfs:label "assessed by"@en ;
+    rdfs:domain ehs:HazardousExposureSituation ;
+    rdfs:range ehs:ARECCProcess ;
+    skos:definition "A hazardous situation is assessed through the ARECC decision-making framework."@en .
+
+# --- Control application ---
+
+ehs:controlledBy rdf:type owl:ObjectProperty ;
+    rdfs:label "controlled by"@en ;
+    rdfs:domain ehs:Hazard ;
+    rdfs:range ehs:ControlMeasure ;
+    skos:definition "A hazard is managed through a specific control measure from the hierarchy."@en .
+
+# --- Outcome relationships ---
+
+ehs:developsInto rdf:type owl:ObjectProperty ;
+    rdfs:label "develops into"@en ;
+    rdfs:domain ehs:HazardousExposureSituation ;
+    rdfs:range ehs:Outcome ;
+    skos:definition "If uncontrolled, a hazardous situation develops into an accident, incident, or occupational disease."@en .
+
+ehs:producesConsequence rdf:type owl:ObjectProperty ;
+    rdfs:label "produces consequence"@en ;
+    rdfs:domain ehs:HazardousExposureSituation ;
+    rdfs:range ehs:Consequence ;
+    skos:definition "A hazardous situation produces consequences of varying severity and impact."@en .
+
+# --- Work context ---
+
+ehs:occursIn rdf:type owl:ObjectProperty ;
+    rdfs:label "occurs in"@en ;
+    rdfs:domain ehs:HazardousExposureSituation ;
+    rdfs:range ehs:WorkProcess ;
+    skos:definition "A hazardous situation occurs within a work process context."@en .
+
+ehs:belongsToSEG rdf:type owl:ObjectProperty ;
+    rdfs:label "belongs to SEG"@en ;
+    rdfs:domain ehs:Employee ;
+    rdfs:range ehs:SimilarExposureGroup ;
+    skos:definition "An employee belongs to a similar exposure group for assessment purposes."@en .
+
+ehs:hasCharacteristic rdf:type owl:ObjectProperty ;
+    rdfs:label "has characteristic"@en ;
+    rdfs:domain ehs:Employee ;
+    rdfs:range ehs:WorkerCharacteristic ;
+    skos:definition "An employee has worker characteristics that influence susceptibility and safety needs."@en .
+
+# --- Risk relationships ---
+
+ehs:requiresAssessment rdf:type owl:ObjectProperty ;
+    rdfs:label "requires assessment"@en ;
+    rdfs:domain ehs:HazardousExposureSituation ;
+    rdfs:range ehs:RiskAssessment ;
+    skos:definition "A hazardous situation requires risk assessment."@en .
+
+ehs:informsManagement rdf:type owl:ObjectProperty ;
+    rdfs:label "informs management"@en ;
+    rdfs:domain ehs:RiskAssessment ;
+    rdfs:range ehs:RiskManagement ;
+    skos:definition "Risk assessment informs risk management decisions."@en .
+
+
+# ============================================================
+# DATATYPE PROPERTIES
+# ============================================================
+
+ehs:hierarchyRank rdf:type owl:DatatypeProperty ;
+    rdfs:label "hierarchy rank"@en ;
+    rdfs:domain ehs:ControlMeasure ;
+    rdfs:range xsd:integer ;
+    skos:definition "The rank in the Hierarchy of Controls (1=most effective, 5=least effective)."@en .
+
+ehs:cfrReference rdf:type owl:DatatypeProperty ;
+    rdfs:label "CFR reference"@en ;
+    rdfs:domain ehs:RegulatoryFramework ;
+    rdfs:range xsd:string ;
+    skos:definition "The Code of Federal Regulations citation for this framework."@en .
+
+ehs:oelValue rdf:type owl:DatatypeProperty ;
+    rdfs:label "OEL value"@en ;
+    rdfs:domain ehs:OccupationalExposureLimit ;
+    rdfs:range xsd:decimal ;
+    skos:definition "The numeric occupational exposure limit value."@en .
+
+ehs:oelUnit rdf:type owl:DatatypeProperty ;
+    rdfs:label "OEL unit"@en ;
+    rdfs:domain ehs:OccupationalExposureLimit ;
+    rdfs:range xsd:string ;
+    skos:definition "The unit of measurement for the OEL (e.g., ppm, mg/m³, dBA)."@en .
+
+ehs:exposureDuration rdf:type owl:DatatypeProperty ;
+    rdfs:label "exposure duration"@en ;
+    rdfs:domain ehs:Exposure ;
+    rdfs:range xsd:duration ;
+    skos:definition "The temporal length of the exposure event."@en .
+
+ehs:exposureConcentration rdf:type owl:DatatypeProperty ;
+    rdfs:label "exposure concentration"@en ;
+    rdfs:domain ehs:Exposure ;
+    rdfs:range xsd:decimal ;
+    skos:definition "The measured or estimated concentration of the hazardous agent."@en .
+
+
+# ============================================================
+# v2.0: COMPOUND HAZARD PROFILES (Multi-Type Overlap)
+# ============================================================
+# When a single situation involves multiple HazardTypes, the regulatory
+# frameworks fired are the UNION of all constituent types' activations,
+# plus any interaction-specific frameworks unique to the combination.
+
+ehs:CompoundHazardProfile rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ComplianceActivation ;
+    rdfs:label "Compound Hazard Profile"@en ;
+    skos:definition """A compliance activation triggered by the co-occurrence of two or more
+    HazardTypes within a single HazardousExposureSituation. The resulting regulatory
+    obligation is the union of all constituent type activations, plus any interaction-specific
+    frameworks unique to the combination. This models real-world scenarios where hazards
+    rarely present as pure single-type events."""@en ;
+    rdfs:comment """KEY DESIGN PRINCIPLE: Compliance is additive, not selective. When Chemical
+    and Ergonomic hazards co-occur, you do not pick one — both OSHA HCS and NIOSH ergonomic
+    guidelines fire simultaneously. The CompoundHazardProfile makes this union explicit."""@en .
+
+ehs:combinesTypes rdf:type owl:ObjectProperty ;
+    rdfs:label "combines types"@en ;
+    rdfs:domain ehs:CompoundHazardProfile ;
+    rdfs:range ehs:HazardType ;
+    skos:definition "Links a compound profile to each constituent HazardType in the overlap."@en .
+
+ehs:hasInteractionNote rdf:type owl:DatatypeProperty ;
+    rdfs:label "interaction note"@en ;
+    rdfs:domain ehs:CompoundHazardProfile ;
+    rdfs:range xsd:string ;
+    skos:definition "Describes what is unique about this particular type combination — synergistic risks, overlapping jurisdiction issues, or special requirements that arise only from the co-occurrence."@en .
+
+# --- Multi-Type Profile instances ---
+
+ehs:ChemicalErgonomicProfile rdf:type ehs:CompoundHazardProfile ;
+    rdfs:label "Chemical + Ergonomic Overlap"@en ;
+    ehs:combinesTypes ehs:ChemicalHazard , ehs:ErgonomicHazard ;
+    ehs:activatesFramework ehs:OSHA_Framework , ehs:EPA_Framework , ehs:GHS_Framework ,
+        ehs:ACGIH_Framework , ehs:NIOSH_Framework , ehs:ANSI_Framework , ehs:ISO_Framework ;
+    ehs:hasInteractionNote "Manual handling of chemical containers introduces MSD risk on top of chemical exposure. OSHA HCS for the substance, NIOSH Lifting Equation for the task, ANSI Z365 for the ergonomic program. Awkward postures during chemical handling increase dermal absorption risk." .
+
+ehs:ChemicalPhysicalProfile rdf:type ehs:CompoundHazardProfile ;
+    rdfs:label "Chemical + Physical Overlap"@en ;
+    ehs:combinesTypes ehs:ChemicalHazard , ehs:PhysicalHazard ;
+    ehs:activatesFramework ehs:OSHA_Framework , ehs:EPA_Framework , ehs:GHS_Framework ,
+        ehs:ACGIH_Framework , ehs:NRC_Framework , ehs:NIOSH_Framework ;
+    ehs:hasInteractionNote "Chemical exposure combined with physical agents (e.g., noise + solvent vapor, or heat stress + chemical volatility). Heat increases vapor pressure and inhalation rate. Noise may mask chemical alarm signals. ACGIH TLV additive mixture formula applies when multiple chemicals are present." .
+
+ehs:ChemicalElectricalProfile rdf:type ehs:CompoundHazardProfile ;
+    rdfs:label "Chemical + Electrical Overlap"@en ;
+    ehs:combinesTypes ehs:ChemicalHazard , ehs:ElectricalHazard ;
+    ehs:activatesFramework ehs:OSHA_Framework , ehs:EPA_Framework , ehs:GHS_Framework ,
+        ehs:NFPA_Framework , ehs:ANSI_Framework ;
+    ehs:hasInteractionNote "Flammable chemicals near electrical ignition sources. NFPA 70 (NEC) hazardous location classification (Class I/II/III, Div 1/2) determines electrical equipment requirements. NFPA 30 for flammable liquid storage near electrical panels." .
+
+ehs:BiologicalChemicalProfile rdf:type ehs:CompoundHazardProfile ;
+    rdfs:label "Biological + Chemical Overlap"@en ;
+    ehs:combinesTypes ehs:BiologicalHazard , ehs:ChemicalHazard ;
+    ehs:activatesFramework ehs:OSHA_Framework , ehs:EPA_Framework , ehs:GHS_Framework ,
+        ehs:ACGIH_Framework , ehs:NIOSH_Framework ;
+    ehs:hasInteractionNote "Chemical disinfectants used against biological hazards create dual exposure. Healthcare workers face bloodborne pathogens + formaldehyde/glutaraldehyde. Wastewater treatment combines biological agents with chlorine/ozone. Both BBP standard and HCS apply simultaneously." .
+
+ehs:MechanicalErgonomicProfile rdf:type ehs:CompoundHazardProfile ;
+    rdfs:label "Mechanical + Ergonomic Overlap"@en ;
+    ehs:combinesTypes ehs:MechanicalHazard , ehs:ErgonomicHazard ;
+    ehs:activatesFramework ehs:OSHA_Framework , ehs:ANSI_Framework , ehs:NIOSH_Framework ,
+        ehs:ISO_Framework ;
+    ehs:hasInteractionNote "Repetitive machine operation with awkward postures. Assembly line workers facing both caught-in-between risks and cumulative trauma. Machine guarding (OSHA Subpart O) + ergonomic program (NIOSH/ANSI Z365) both required." .
+
+ehs:PhysicalPsychosocialProfile rdf:type ehs:CompoundHazardProfile ;
+    rdfs:label "Physical + Psychosocial Overlap"@en ;
+    ehs:combinesTypes ehs:PhysicalHazard , ehs:PsychosocialHazard ;
+    ehs:activatesFramework ehs:OSHA_Framework , ehs:ACGIH_Framework , ehs:ISO_Framework ,
+        ehs:NIOSH_Framework ;
+    ehs:hasInteractionNote "Chronic noise exposure combined with shift work and workplace stress. Noise-induced stress amplifies psychosocial strain. ISO 45003 for psychological factors, ACGIH TLV for noise, NIOSH Total Worker Health approach for the intersection." .
+
+ehs:ChemicalMechanicalErgonomicProfile rdf:type ehs:CompoundHazardProfile ;
+    rdfs:label "Chemical + Mechanical + Ergonomic (Triple Overlap)"@en ;
+    ehs:combinesTypes ehs:ChemicalHazard , ehs:MechanicalHazard , ehs:ErgonomicHazard ;
+    ehs:activatesFramework ehs:OSHA_Framework , ehs:EPA_Framework , ehs:GHS_Framework ,
+        ehs:ACGIH_Framework , ehs:NIOSH_Framework , ehs:ANSI_Framework , ehs:ISO_Framework ;
+    ehs:hasInteractionNote "Manual drum handling near running machinery — chemical splash risk + caught-in hazard + lifting/twisting injury. Common in manufacturing and chemical processing. Requires integrated JHA covering all three domains simultaneously." .
+
+
+# ============================================================
+# v2.0: ACTION CONTEXT TAXONOMY
+# ============================================================
+# The action being performed at the time of the incident determines
+# additional regulatory activation beyond what the hazard type alone
+# would trigger. Action Context is the VERB of the incident — it
+# answers "what was being done when the hazard materialized?"
+
+ehs:ActionContext rdf:type owl:Class ;
+    rdfs:label "Action Context"@en ;
+    skos:definition """The operational action being performed at the time a hazardous situation
+    occurs. Action Context is the second axis of compliance activation — while HazardType
+    classifies WHAT the hazard is, ActionContext classifies WHAT WAS BEING DONE when the
+    hazard materialized. Together, HazardType + ActionContext determine the full regulatory
+    framework activation set.
+
+    Example: A chemical spill (ChemicalHazard) fires OSHA HCS and EPA. But if that spill
+    occurred during truck offloading (TransportAction), DOT/PHMSA also fires. If the same
+    chemical is being disposed of (WasteHandlingAction), EPA RCRA fires instead of DOT."""@en ;
+    rdfs:comment """Action Context captures the insight that identical hazard types produce
+    different regulatory obligations depending on the operational phase. The same drum of
+    toluene triggers DOT 49 CFR in transit, OSHA 29 CFR in use, EPA 40 CFR in storage,
+    and EPA RCRA in disposal."""@en .
+
+ehs:involvesAction rdf:type owl:ObjectProperty ;
+    rdfs:label "involves action"@en ;
+    rdfs:domain ehs:HazardousExposureSituation ;
+    rdfs:range ehs:ActionContext ;
+    skos:definition "Links a hazardous situation to the action being performed when it occurred."@en .
+
+# --- Action Context subclasses ---
+
+ehs:TransportAction rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ActionContext ;
+    rdfs:label "Transportation / Loading / Unloading"@en ;
+    skos:definition """Moving hazardous materials between locations — includes over-the-road
+    transit, loading dock operations, rail car loading/unloading, and pipeline transfer.
+    Activates DOT/PHMSA (49 CFR) when hazmat crosses or is at the property boundary.
+    The loading dock is the jurisdictional boundary between DOT and OSHA."""@en ;
+    ehs:activatesFramework ehs:DOT_Framework , ehs:OSHA_Framework .
+
+ehs:StorageAction rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ActionContext ;
+    rdfs:label "Storage / Warehousing"@en ;
+    skos:definition """Storing hazardous materials in designated areas — tanks, drum storage,
+    warehouses, chemical cabinets. Activates EPA RCRA for quantity thresholds and storage
+    time limits, OSHA for worker access, NFPA for flammable storage.
+    Key distinction: storage > 90 days for hazardous waste requires EPA RCRA permit."""@en ;
+    ehs:activatesFramework ehs:EPA_Framework , ehs:OSHA_Framework , ehs:NFPA_Framework .
+
+ehs:ProcessingAction rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ActionContext ;
+    rdfs:label "Processing / Manufacturing"@en ;
+    skos:definition """Active use of hazardous materials in production processes — mixing,
+    reacting, machining, coating, etc. Activates OSHA PSM (29 CFR 1910.119) for
+    highly hazardous chemicals above threshold quantities, EPA RMP for off-site
+    consequence analysis."""@en ;
+    ehs:activatesFramework ehs:OSHA_Framework , ehs:EPA_Framework , ehs:ACGIH_Framework .
+
+ehs:MaintenanceAction rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ActionContext ;
+    rdfs:label "Maintenance / Repair / Shutdown"@en ;
+    skos:definition """Servicing, repairing, or shutting down equipment that involves or
+    contains hazardous energy or materials. Activates OSHA LOTO (29 CFR 1910.147),
+    confined space (29 CFR 1910.146), and hot work permit requirements."""@en ;
+    ehs:activatesFramework ehs:OSHA_Framework , ehs:NFPA_Framework , ehs:ANSI_Framework .
+
+ehs:EmergencyResponseAction rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ActionContext ;
+    rdfs:label "Emergency Response / Spill Response"@en ;
+    skos:definition """Responding to an unplanned release, fire, explosion, or other emergency
+    involving hazardous materials. Activates OSHA HAZWOPER (29 CFR 1910.120), EPA CERCLA
+    for reportable quantities, EPCRA for community notification, NRT/NCP for federal
+    response coordination."""@en ;
+    ehs:activatesFramework ehs:OSHA_Framework , ehs:EPA_Framework .
+
+ehs:WasteHandlingAction rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ActionContext ;
+    rdfs:label "Waste Handling / Disposal"@en ;
+    skos:definition """Collecting, characterizing, packaging, labeling, manifesting, and
+    disposing of hazardous waste. Activates EPA RCRA (40 CFR 260-270) as the primary
+    framework — generator status (VSQG/SQG/LQG) determines specific requirements.
+    If waste is transported off-site, DOT also fires for the transport leg."""@en ;
+    ehs:activatesFramework ehs:EPA_Framework , ehs:OSHA_Framework .
+
+ehs:TransferAction rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ActionContext ;
+    rdfs:label "Transfer / Decanting / Dispensing"@en ;
+    skos:definition """Moving hazardous materials between containers within a facility —
+    drum-to-drum, bulk-to-day-tank, dispensing from totes. Activates OSHA HCS for
+    labeling of secondary containers, grounding/bonding for flammables per NFPA 77."""@en ;
+    ehs:activatesFramework ehs:OSHA_Framework , ehs:NFPA_Framework , ehs:GHS_Framework .
+
+ehs:ConstructionAction rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ActionContext ;
+    rdfs:label "Construction / Demolition"@en ;
+    skos:definition """Building, modifying, or demolishing structures that may involve
+    hazardous materials (asbestos, lead paint, silica). Shifts from OSHA General Industry
+    (1910) to OSHA Construction (1926), and may activate EPA NESHAP for asbestos or
+    lead renovation rules (40 CFR 61/745)."""@en ;
+    ehs:activatesFramework ehs:OSHA_Framework , ehs:EPA_Framework , ehs:NIOSH_Framework .
+
+ehs:SamplingAction rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ActionContext ;
+    rdfs:label "Sampling / Monitoring / Testing"@en ;
+    skos:definition """Collecting air, water, soil, or material samples for analysis.
+    The sampling action itself may create exposure risk. Activates OSHA for worker
+    protection during sampling, EPA for environmental sample handling, NIOSH for
+    sampling methodology."""@en ;
+    ehs:activatesFramework ehs:OSHA_Framework , ehs:NIOSH_Framework , ehs:EPA_Framework .
+
+
+# ============================================================
+# v2.0: CONTEXTUAL CONDITIONS (Modifiers)
+# ============================================================
+# Conditions present at the time of the incident that further refine
+# which specific regulations within a framework apply. These are the
+# ADJECTIVES that modify the regulatory routing.
+
+ehs:ContextualCondition rdf:type owl:Class ;
+    rdfs:label "Contextual Condition"@en ;
+    skos:definition """A modifier present at the time of a hazardous situation that further
+    refines which regulations fire within the activated frameworks. Conditions answer:
+    Was it contained? Where exactly did it happen? How much was involved?
+    Conditions do not replace HazardType or ActionContext — they refine the output
+    of those two classifiers."""@en .
+
+ehs:hasCondition rdf:type owl:ObjectProperty ;
+    rdfs:label "has condition"@en ;
+    rdfs:domain ehs:HazardousExposureSituation ;
+    rdfs:range ehs:ContextualCondition ;
+    skos:definition "Links a hazardous situation to the contextual conditions present."@en .
+
+# --- Containment Status ---
+
+ehs:ContainmentStatus rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ContextualCondition ;
+    rdfs:label "Containment Status"@en ;
+    skos:definition "Whether the hazardous material was successfully contained by engineered barriers at the time of the incident. This is a critical regulatory fork point."@en .
+
+ehs:FullyContained rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ContainmentStatus ;
+    rdfs:label "Fully Contained (No Breach)"@en ;
+    skos:definition """The secondary containment, dike, berm, or engineered barrier held —
+    no material escaped to the environment. Dramatically narrows the regulatory scope:
+    eliminates CERCLA/EPCRA reporting, eliminates CWA/CAA release reporting, reduces
+    the situation to proper disposal of contained material under EPA RCRA.
+    The containment system performed as designed.
+
+    CRITICAL: This exemption is VOLUME-INDEPENDENT. Per EPA/DOE guidance (DOE/EH-0447,
+    1995), a release into a structure that is properly designed, constructed, and maintained
+    to contain a hazardous substance, and in fact does contain it, is NOT a release 'to the
+    environment' under CERCLA §101(22). This applies regardless of whether the quantity
+    exceeds the CERCLA RQ. Containment integrity — not quantity — is the primary gate.
+
+    EDGE CASE — VOLATILE VAPOR EMISSIONS: For volatile chemicals (toluene, benzene, xylene,
+    etc.), contained liquid still produces vapor emissions to ambient air. CERCLA defines
+    'environment' to include ambient air. If vapor mass exceeds the RQ within 24 hours,
+    CERCLA §103 reporting may still apply for the airborne component even when liquid
+    containment is intact. This primarily affects chemicals with high vapor pressure AND
+    low RQs (e.g., benzene: VP=95 mmHg, RQ=10 lbs)."""@en ;
+    rdfs:comment "Containment integrity is the primary regulatory gate — not quantity. Same chemical, same spill, but containment status completely changes the regulatory routing. Validated against 40 CFR 264.175, CERCLA §103, EPCRA §304, and EPA/DOE guidance DOE/EH-0447."@en .
+
+ehs:PartialBreach rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ContainmentStatus ;
+    rdfs:label "Partial Breach"@en ;
+    skos:definition """Some material escaped containment but was intercepted before reaching
+    navigable waters, storm drains, or soil. May trigger state-level reporting.
+    EPA RCRA for cleanup and disposal, potential EPCRA notification depending
+    on quantity and substance."""@en .
+
+ehs:FullRelease rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ContainmentStatus ;
+    rdfs:label "Full Release (Uncontained)"@en ;
+    skos:definition """Material released to the environment — reached soil, surface water,
+    storm drains, or atmosphere above de minimis levels. Full regulatory cascade:
+    EPA CERCLA (if above RQ), CWA (if to waters), CAA (if to air), EPCRA 302/304
+    for community notification, potential NRC notification for certain substances,
+    state environmental agency notification."""@en .
+
+# --- Location Context ---
+
+ehs:LocationContext rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ContextualCondition ;
+    rdfs:label "Location Context"@en ;
+    skos:definition "The specific location within or adjacent to the facility where the incident occurred. Location determines jurisdictional boundaries between agencies."@en .
+
+ehs:LoadingDock rdf:type owl:Class ;
+    rdfs:subClassOf ehs:LocationContext ;
+    rdfs:label "Loading Dock / Property Boundary"@en ;
+    skos:definition """The jurisdictional interface between DOT and OSHA. Material on the
+    truck/rail car is under DOT jurisdiction; material on the facility floor is under OSHA.
+    A spill AT the loading dock during transfer may trigger BOTH jurisdictions simultaneously.
+    DOT incident reporting (49 CFR 171.15/171.16) if hazmat release from transport vehicle."""@en .
+
+ehs:ProductionFloor rdf:type owl:Class ;
+    rdfs:subClassOf ehs:LocationContext ;
+    rdfs:label "Production Floor / Process Area"@en ;
+    skos:definition "Active production or processing area. Primarily OSHA jurisdiction. If PSM-covered process, 29 CFR 1910.119 applies."@en .
+
+ehs:StorageArea rdf:type owl:Class ;
+    rdfs:subClassOf ehs:LocationContext ;
+    rdfs:label "Storage Area / Tank Farm"@en ;
+    skos:definition "Designated chemical storage — drum storage, tank farm, chemical warehouse. EPA RCRA storage time limits (90/180/270 days by generator status). NFPA 30 for flammable storage."@en .
+
+ehs:ConfinedSpace rdf:type owl:Class ;
+    rdfs:subClassOf ehs:LocationContext ;
+    rdfs:label "Confined Space"@en ;
+    skos:definition "A space with limited entry/egress not designed for continuous occupancy. OSHA 29 CFR 1910.146 (permit-required confined spaces) fires automatically regardless of hazard type."@en .
+
+ehs:PublicRoadway rdf:type owl:Class ;
+    rdfs:subClassOf ehs:LocationContext ;
+    rdfs:label "Public Roadway / Right-of-Way"@en ;
+    skos:definition "Public road, highway, or rail corridor. DOT/PHMSA primary jurisdiction. OSHA does not apply to over-the-road transportation. State DOT and local emergency management also activated."@en .
+
+ehs:WaterwayProximity rdf:type owl:Class ;
+    rdfs:subClassOf ehs:LocationContext ;
+    rdfs:label "Navigable Waterway Proximity"@en ;
+    skos:definition "Near navigable waters as defined by CWA. Any release risks triggering CWA Section 311 (oil/hazardous substance spill reporting), EPA SPCC requirements, and USCG notification for coastal/port areas."@en .
+
+ehs:SecondaryContainmentArea rdf:type owl:Class ;
+    rdfs:subClassOf ehs:LocationContext ;
+    rdfs:label "Secondary Containment Area"@en ;
+    skos:definition "An area with engineered containment (berms, dikes, double-walled tanks, spill pallets). If containment holds, reduces the incident to a disposal event rather than a release event."@en .
+
+# --- Quantity Threshold ---
+
+ehs:QuantityThreshold rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ContextualCondition ;
+    rdfs:label "Quantity Threshold"@en ;
+    skos:definition "Whether the quantity released exceeds regulatory reporting thresholds. Determines which specific notification and reporting requirements are triggered."@en .
+
+ehs:BelowReportableQuantity rdf:type owl:Class ;
+    rdfs:subClassOf ehs:QuantityThreshold ;
+    rdfs:label "Below RQ (Reportable Quantity)"@en ;
+    skos:definition """Release quantity is below the CERCLA Reportable Quantity for the substance.
+    No federal release reporting required, but facility-level recordkeeping still applies.
+    State thresholds may differ.
+
+    NOTE: QuantityThreshold is SUBORDINATE to ContainmentStatus in the routing logic.
+    If containment is intact (FullyContained), CERCLA/EPCRA reporting does not apply
+    regardless of quantity — because there is no release 'to the environment.' The RQ
+    threshold only becomes the deciding factor when the release IS to the environment
+    (i.e., containment has failed or is absent)."""@en .
+
+ehs:AboveReportableQuantity rdf:type owl:Class ;
+    rdfs:subClassOf ehs:QuantityThreshold ;
+    rdfs:label "At or Above RQ"@en ;
+    skos:definition """Release equals or exceeds the CERCLA Reportable Quantity. When the
+    release IS to the environment (containment absent or breached), triggers:
+    - NRC (National Response Center) notification within 24 hours
+    - EPCRA Section 304 emergency notification to LEPC/SERC
+    - EPA CERCLA 103(a) reporting
+    - Written follow-up within 30 days
+
+    NOTE: These triggers only fire when the material has reached 'the environment'
+    as defined by CERCLA §101(8). If fully contained in secondary containment, no
+    reporting is required regardless of quantity (see FullyContained)."""@en .
+
+ehs:AboveTPQ rdf:type owl:Class ;
+    rdfs:subClassOf ehs:QuantityThreshold ;
+    rdfs:label "Above TPQ (Threshold Planning Quantity)"@en ;
+    skos:definition "Facility has Extremely Hazardous Substance (EHS) at or above the EPCRA Section 302 Threshold Planning Quantity. Requires emergency planning with LEPC, EPCRA Sections 302/303."@en .
+
+
+# ============================================================
+# v2.0: CONTEXTUAL COMPLIANCE ACTIVATION
+# ============================================================
+# The full routing class: HazardType(s) + ActionContext + ContextualConditions
+# → precise set of regulatory frameworks and specific citations.
+
+ehs:ContextualComplianceActivation rdf:type owl:Class ;
+    rdfs:subClassOf ehs:ComplianceActivation ;
+    rdfs:label "Contextual Compliance Activation"@en ;
+    skos:definition """The complete compliance routing for a specific scenario, determined by
+    the combination of HazardType(s), ActionContext, and ContextualConditions. This is the
+    fully resolved regulatory activation — it answers 'exactly which regulations apply to
+    THIS specific incident in THIS specific context?'
+
+    Routing logic:
+    1. HazardType(s) fire the baseline framework set (from single-type or CompoundHazardProfile)
+    2. ActionContext adds or modifies frameworks (e.g., TransportAction adds DOT)
+    3. ContextualConditions further refine (e.g., FullyContained removes release-reporting regs)
+    4. The result is the precise regulatory obligation set."""@en .
+
+ehs:hasActionContext rdf:type owl:ObjectProperty ;
+    rdfs:label "has action context"@en ;
+    rdfs:domain ehs:ContextualComplianceActivation ;
+    rdfs:range ehs:ActionContext ;
+    skos:definition "Links a contextual activation to the action being performed."@en .
+
+ehs:hasContextCondition rdf:type owl:ObjectProperty ;
+    rdfs:label "has context condition"@en ;
+    rdfs:domain ehs:ContextualComplianceActivation ;
+    rdfs:range ehs:ContextualCondition ;
+    skos:definition "Links a contextual activation to the conditions present."@en .
+
+ehs:specificCitation rdf:type owl:DatatypeProperty ;
+    rdfs:label "specific citation"@en ;
+    rdfs:domain ehs:ContextualComplianceActivation ;
+    rdfs:range xsd:string ;
+    skos:definition "The specific regulatory citation(s) that apply in this contextual scenario."@en .
+
+ehs:scenarioDescription rdf:type owl:DatatypeProperty ;
+    rdfs:label "scenario description"@en ;
+    rdfs:domain ehs:ContextualComplianceActivation ;
+    rdfs:range xsd:string ;
+    skos:definition "A plain-language narrative of the scenario this activation models."@en .
+
+
+# ============================================================
+# v2.0: WORKED SCENARIO INSTANCES
+# ============================================================
+# Concrete examples demonstrating how HazardType + ActionContext +
+# ContextualConditions route to specific regulatory frameworks.
+
+# --- SCENARIO 1: Chemical spill during truck offloading at loading dock ---
+ehs:Scenario_ChemSpill_LoadingDock rdf:type ehs:ContextualComplianceActivation ;
+    rdfs:label "Scenario: Chemical Spill at Loading Dock During Offloading"@en ;
+    ehs:triggeredByType ehs:ChemicalHazard ;
+    ehs:hasActionContext ehs:TransportAction ;
+    ehs:hasContextCondition ehs:LoadingDock , ehs:FullRelease , ehs:AboveReportableQuantity ;
+    ehs:activatesFramework ehs:DOT_Framework , ehs:EPA_Framework , ehs:OSHA_Framework ;
+    ehs:specificCitation "DOT 49 CFR 171.15 (immediate telephonic notice), 49 CFR 171.16 (written hazmat incident report); EPA CERCLA 103(a) (NRC notification); EPCRA 304 (LEPC/SERC notification); EPA RCRA 40 CFR 262 (hazardous waste characterization/disposal of spill residue and contaminated soil); OSHA 29 CFR 1910.120 (HAZWOPER if uncontrolled release); OSHA 29 CFR 1910.1200 (HCS for employee exposure)" ;
+    ehs:scenarioDescription """A chemical drum ruptures while being offloaded from a delivery
+    truck at the facility loading dock. The spill reaches the ground outside secondary
+    containment. Because the material is still associated with transport (truck at dock
+    with carrier present — per 49 CFR 171.1(c)(2)-(3), unloading in presence of carrier
+    is 'incidental to movement' and thus within DOT jurisdiction), DOT incident reporting
+    fires. Because the release is uncontained and above RQ, EPA CERCLA/EPCRA reporting
+    fires. The spill cleanup also generates hazardous waste requiring EPA RCRA management
+    (characterization, manifesting, disposal via licensed TSDF). Because workers are
+    present and the release is uncontrolled, OSHA HAZWOPER and HCS fire.
+    Three federal agencies — DOT, EPA, OSHA — all have jurisdiction simultaneously.
+
+    NOTE on HAZWOPER threshold: Per 29 CFR 1910.120(a)(3) and Tampa Electric (11th Cir.
+    2022), HAZWOPER only applies if the release is truly 'uncontrolled.' If employees in
+    the immediate area can absorb/neutralize/control the spill, it is an 'incidental
+    release' and HAZWOPER does not apply (though HCS and other OSHA standards still do).
+
+    NOTE on DOT carrier-presence: DOT jurisdiction at the dock requires carrier personnel
+    to be present or participating. If the carrier has departed, the unloading is no
+    longer 'incidental to movement' and DOT does not apply.""" .
+
+# --- SCENARIO 2: Chemical spill contained in secondary containment ---
+ehs:Scenario_ChemSpill_Contained rdf:type ehs:ContextualComplianceActivation ;
+    rdfs:label "Scenario: Chemical Spill in Secondary Containment (No Breach)"@en ;
+    ehs:triggeredByType ehs:ChemicalHazard ;
+    ehs:hasActionContext ehs:WasteHandlingAction ;
+    ehs:hasContextCondition ehs:SecondaryContainmentArea , ehs:FullyContained ;
+    ehs:activatesFramework ehs:EPA_Framework , ehs:OSHA_Framework ;
+    ehs:specificCitation "EPA 40 CFR 262 (generator requirements for contained waste characterization and disposal); 40 CFR 264.175 (containment system requirements); 40 CFR 265.37 (contingency plan for contained releases); OSHA 29 CFR 1910.1200 (HCS — workers handling cleanup need SDS access, labeling, PPE); NO CERCLA 103(a) notification required (no release to environment per EPA/DOE guidance DOE/EH-0447)" ;
+    ehs:scenarioDescription """The same chemical spills from a drum, but inside a facility area
+    with intact secondary containment (bermed area, spill pallet per 40 CFR 264.175).
+    No chemical breaches containment — it is fully captured.
+
+    CONTAINMENT IS THE PRIMARY GATE — NOT QUANTITY. Per EPA/DOE guidance (DOE/EH-0447,
+    1995), a release into properly designed, constructed, and maintained secondary
+    containment is NOT a release 'to the environment' under CERCLA §101(22). This
+    exemption is volume-independent: even if the contained quantity exceeds the CERCLA
+    RQ, no CERCLA §103 or EPCRA §304 reporting is required.
+
+    Because there is no release to the environment, CERCLA/EPCRA reporting does NOT
+    fire. Because there is no transport context, DOT does NOT fire. The spill becomes
+    a waste disposal event: EPA RCRA for proper characterization, manifesting, and
+    disposal of the contained material. OSHA HCS (29 CFR 1910.1200) applies because
+    workers performing the cleanup must have SDS access, proper labeling, and
+    appropriate PPE.
+
+    EDGE CASE — VOLATILE VAPOR EMISSIONS: For volatile chemicals, contained liquid
+    still produces vapor that enters ambient air. If vapor mass exceeds the RQ within
+    24 hours, CERCLA §103 reporting may apply for the airborne release even when
+    liquid containment is intact. Evaluate vapor pressure and RQ for each substance.
+
+    The containment barrier completely changes the regulatory routing.""" .
+
+# --- SCENARIO 3: Chemical + Ergonomic overlap during manual drum handling ---
+ehs:Scenario_ChemErgo_DrumHandling rdf:type ehs:ContextualComplianceActivation ;
+    rdfs:label "Scenario: Chemical + Ergonomic During Manual Drum Handling"@en ;
+    ehs:triggeredByType ehs:ChemicalHazard , ehs:ErgonomicHazard ;
+    ehs:hasActionContext ehs:TransferAction ;
+    ehs:hasContextCondition ehs:ProductionFloor ;
+    ehs:activatesFramework ehs:OSHA_Framework , ehs:GHS_Framework , ehs:ACGIH_Framework ,
+        ehs:NIOSH_Framework , ehs:ANSI_Framework ;
+    ehs:specificCitation "OSHA 29 CFR 1910.1200 (HCS for chemical labeling/SDS); OSHA General Duty Clause 5(a)(1) (ergonomic hazard citation); NIOSH Lifting Equation (manual handling assessment); ANSI Z365 (ergonomic program); ACGIH TLV for chemical + skin notation for dermal absorption during awkward-posture handling" ;
+    ehs:scenarioDescription """A worker manually lifts and tilts a 55-gallon drum to decant
+    solvent into a smaller container. The chemical exposure (inhalation of vapors + dermal
+    contact during pouring) fires OSHA HCS and ACGIH TLV compliance. Simultaneously, the
+    awkward posture, heavy lifting, and repetitive drum tilting create ergonomic risk that
+    fires NIOSH Lifting Equation, ANSI Z365, and OSHA GDC. Both compliance pathways are
+    active — neither cancels the other. The JHA must address both chemical and ergonomic
+    dimensions of the same task.""" .
+
+# --- SCENARIO 4: Chemical spill on public roadway (transport accident) ---
+ehs:Scenario_ChemSpill_Roadway rdf:type ehs:ContextualComplianceActivation ;
+    rdfs:label "Scenario: Hazmat Release on Public Roadway"@en ;
+    ehs:triggeredByType ehs:ChemicalHazard ;
+    ehs:hasActionContext ehs:TransportAction ;
+    ehs:hasContextCondition ehs:PublicRoadway , ehs:FullRelease , ehs:AboveReportableQuantity ;
+    ehs:activatesFramework ehs:DOT_Framework , ehs:EPA_Framework , ehs:USCG_Framework ;
+    ehs:specificCitation "DOT 49 CFR 171.15/171.16 (hazmat incident reporting); DOT 49 CFR 172.600 (ERG emergency response info); EPA CERCLA 103(a) (NRC notification); EPCRA 304 (LEPC/SERC); CWA 311 if near waterway; OSHA 29 CFR 1910.120 (HAZWOPER for response workers only); State DOT emergency notification" ;
+    ehs:scenarioDescription """A tanker truck overturns on a public highway, releasing a
+    hazardous chemical. DOT is primary jurisdiction for the transport incident. EPA fires
+    for environmental release above RQ. OSHA fires only for the response workers
+    (HAZWOPER), not the public. If near navigable waters, CWA Section 311 and potentially
+    USCG notification fire. Note: OSHA does NOT regulate the driving activity — DOT does.
+    OSHA only activates for the emergency responders at the scene.""" .
+
+# --- SCENARIO 5: Biological + Chemical in healthcare maintenance ---
+ehs:Scenario_BioChemMaintenance rdf:type ehs:ContextualComplianceActivation ;
+    rdfs:label "Scenario: Healthcare Decon – Biological + Chemical During Maintenance"@en ;
+    ehs:triggeredByType ehs:BiologicalHazard , ehs:ChemicalHazard ;
+    ehs:hasActionContext ehs:MaintenanceAction ;
+    ehs:hasContextCondition ehs:ConfinedSpace ;
+    ehs:activatesFramework ehs:OSHA_Framework , ehs:EPA_Framework , ehs:NIOSH_Framework ,
+        ehs:GHS_Framework , ehs:ACGIH_Framework ;
+    ehs:specificCitation "OSHA 29 CFR 1910.1030 (BBP standard for biological); OSHA 29 CFR 1910.1200 (HCS for glutaraldehyde/formaldehyde); OSHA 29 CFR 1910.146 (PRCS for confined space entry); OSHA 29 CFR 1910.147 (LOTO for equipment); NIOSH criteria for glutaraldehyde REL; EPA RCRA for mixed bio/chemical waste" ;
+    ehs:scenarioDescription """A maintenance worker enters an autoclave room (permit-required
+    confined space) to repair sterilization equipment. The space has residual biological
+    contamination and glutaraldehyde vapor. Three OSHA standards fire simultaneously:
+    BBP for biological, HCS for chemical, PRCS for the confined space. Because it is
+    maintenance, LOTO also fires. The biological+chemical waste generated is regulated
+    under EPA RCRA as mixed waste. NIOSH REL for glutaraldehyde is more protective than
+    the OSHA PEL and should be used.""" .
+
+# --- SCENARIO 6: Electrical + Chemical in confined space ---
+ehs:Scenario_ElecChemConfined rdf:type ehs:ContextualComplianceActivation ;
+    rdfs:label "Scenario: Electrical + Flammable Chemical in Confined Space"@en ;
+    ehs:triggeredByType ehs:ElectricalHazard , ehs:ChemicalHazard ;
+    ehs:hasActionContext ehs:MaintenanceAction ;
+    ehs:hasContextCondition ehs:ConfinedSpace ;
+    ehs:activatesFramework ehs:OSHA_Framework , ehs:NFPA_Framework , ehs:ANSI_Framework ,
+        ehs:GHS_Framework , ehs:ACGIH_Framework ;
+    ehs:specificCitation "OSHA 29 CFR 1910.146 (PRCS); OSHA 29 CFR 1910.147 (LOTO); OSHA Subpart S (electrical); OSHA 29 CFR 1910.1200 (HCS); NFPA 70E (arc flash/electrical safety); NFPA 70 Art. 500-506 (hazardous location classification for flammable atmosphere); ANSI C2 (electrical safety); ACGIH TLV for flammable solvent" ;
+    ehs:scenarioDescription """Electrician enters a confined space (tank interior) that
+    previously held flammable solvent to repair a level sensor. Electrical hazard (arc
+    flash potential) meets chemical hazard (flammable atmosphere below LEL but present).
+    NFPA 70 hazardous location classification determines whether intrinsically safe
+    electrical tools are required. The electrical work + flammable atmosphere creates
+    a compound risk that neither single-type activation would fully cover alone.""" .
+
+
+# ============================================================
+# v2.0: NEW OBJECT PROPERTIES FOR ACTION CONTEXT
+# ============================================================
+
+ehs:narrowsActivation rdf:type owl:ObjectProperty ;
+    rdfs:label "narrows activation"@en ;
+    rdfs:domain ehs:ContextualCondition ;
+    rdfs:range ehs:RegulatoryFramework ;
+    skos:definition "A contextual condition REMOVES a framework from the activation set. E.g., FullyContained narrows out CERCLA release reporting."@en .
+
+ehs:widensActivation rdf:type owl:ObjectProperty ;
+    rdfs:label "widens activation"@en ;
+    rdfs:domain ehs:ContextualCondition ;
+    rdfs:range ehs:RegulatoryFramework ;
+    skos:definition "A contextual condition ADDS a framework to the activation set. E.g., AboveReportableQuantity adds NRC notification."@en .
+
+ehs:shiftsJurisdiction rdf:type owl:ObjectProperty ;
+    rdfs:label "shifts jurisdiction"@en ;
+    rdfs:domain ehs:LocationContext ;
+    rdfs:range ehs:RegulatoryFramework ;
+    skos:definition "A location context shifts primary jurisdiction from one framework to another. E.g., PublicRoadway shifts primary from OSHA to DOT."@en .
+
+
+# ============================================================
+# END OF ONTOLOGY v2.0
+# ============================================================

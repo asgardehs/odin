@@ -1,0 +1,598 @@
+-- Module C: OSHA 300 Recordkeeping (29 CFR 1904)
+-- Derived from ehs-ontology-v3.1.ttl — Module C + relevant Module D classes
+--
+-- Design principle: separate the EVENT (what happened) from the RECORDING
+-- DECISION (is it recordable?) from the LOG ENTRY (the OSHA form data).
+-- The ontology models recordability as a two-gate decision tree:
+--   Gate 1: Work-relatedness (1904.5)
+--   Gate 2: Recording criteria (1904.7)
+-- This schema makes that decision chain explicit and auditable.
+
+
+-- ============================================================================
+-- SHARED FOUNDATION (referenced by all modules)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS establishments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    street_address TEXT NOT NULL,
+    city TEXT NOT NULL,
+    state TEXT NOT NULL,                        -- 2-letter code
+    zip TEXT NOT NULL,
+    industry_description TEXT,
+    naics_code TEXT,                            -- Determines TRI coverage, OSHA exemptions, ITA tier
+    sic_code TEXT,                              -- Legacy, still used by some OSHA systems
+
+    -- Establishment size (drives ITA submission tier)
+    peak_employees INTEGER,                    -- Peak count during calendar year
+    annual_avg_employees INTEGER,
+    total_hours_worked INTEGER,                -- Updated yearly for rate calculations
+
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS employees (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    establishment_id INTEGER NOT NULL,
+
+    -- Identity
+    employee_number TEXT,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+
+    -- OSHA 301 required fields
+    street_address TEXT,
+    city TEXT,
+    state TEXT,
+    zip TEXT,
+    date_of_birth TEXT,                        -- YYYY-MM-DD
+    date_hired TEXT,                            -- YYYY-MM-DD
+    gender TEXT,                                -- M/F/X for OSHA reporting
+
+    -- Job info
+    job_title TEXT,
+    department TEXT,
+    supervisor_name TEXT,
+
+    -- Status
+    is_active INTEGER DEFAULT 1,
+    termination_date TEXT,
+
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+
+    FOREIGN KEY (establishment_id) REFERENCES establishments(id)
+);
+
+CREATE INDEX idx_employees_establishment ON employees(establishment_id);
+CREATE INDEX idx_employees_name ON employees(last_name, first_name);
+
+
+-- ============================================================================
+-- REFERENCE: RECORDING CRITERIA (from ontology RecordingCriteria subclasses)
+-- ============================================================================
+-- The 9 recording criteria from 29 CFR 1904.7-1904.10.
+-- Each is an independent trigger — meeting ANY ONE makes a case recordable.
+
+CREATE TABLE IF NOT EXISTS recording_criteria (
+    code TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    cfr_reference TEXT NOT NULL,               -- Specific CFR section
+    description TEXT NOT NULL,
+    is_osha_reportable INTEGER DEFAULT 0,      -- Also requires direct OSHA notification?
+    osha_report_hours INTEGER,                 -- Hours to report (8 for fatality, 24 for others)
+    is_privacy_case INTEGER DEFAULT 0          -- Auto-flags as privacy case on 300 Log
+);
+
+INSERT OR IGNORE INTO recording_criteria (code, name, cfr_reference, description, is_osha_reportable, osha_report_hours, is_privacy_case) VALUES
+    ('DEATH',          'Death',                             '1904.7(b)(2)',  'Work-related fatality. No time limit on when death occurs relative to injury.', 1, 8, 0),
+    ('DAYS_AWAY',      'Days Away from Work',               '1904.7(b)(3)',  'One or more calendar days unable to work. Count starts day after event, capped at 180 days.', 0, NULL, 0),
+    ('RESTRICTED',     'Restricted Work or Job Transfer',   '1904.7(b)(4)',  'Cannot perform routine functions, full shift, or transferred to another job. Capped at 180 days.', 0, NULL, 0),
+    ('MEDICAL_TX',     'Medical Treatment Beyond First Aid', '1904.7(b)(5)', 'Any treatment NOT on the exhaustive first aid list. Provider status irrelevant.', 0, NULL, 0),
+    ('LOC',            'Loss of Consciousness',             '1904.7(b)(6)',  'Any work-related loss of consciousness, regardless of duration.', 0, NULL, 0),
+    ('SIG_DIAGNOSIS',  'Significant Diagnosed Condition',   '1904.7(b)(7)',  'Cancer, chronic irreversible disease, fractured/cracked bone, or punctured eardrum diagnosed by PLHCP.', 0, NULL, 0),
+    ('NEEDLESTICK',    'Needlestick/Sharps Injury',         '1904.8',       'Needlestick or cut from sharp contaminated with blood or OPIM.', 0, NULL, 1),
+    ('HEARING_LOSS',   'Standard Threshold Shift',          '1904.10',      'STS of avg 10+ dB at 2k/3k/4k Hz AND total hearing 25+ dB above audiometric zero.', 0, NULL, 0),
+    ('MEDICAL_REMOVAL','Medical Removal',                   '1904.9',       'Removed under OSHA substance-specific standard surveillance (lead, cadmium, benzene, etc).', 0, NULL, 0);
+
+
+-- ============================================================================
+-- REFERENCE: OSHA REPORTING OBLIGATIONS (separate from 300 Log recording)
+-- ============================================================================
+-- Events that must be reported DIRECTLY to OSHA, independent of the 300 Log.
+-- The clock starts when the employer LEARNS of the event, not when it occurs.
+
+CREATE TABLE IF NOT EXISTS osha_reporting_triggers (
+    code TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    report_within_hours INTEGER NOT NULL,
+    cfr_reference TEXT NOT NULL,
+    description TEXT NOT NULL
+);
+
+INSERT OR IGNORE INTO osha_reporting_triggers (code, name, report_within_hours, cfr_reference, description) VALUES
+    ('FATALITY',        'Work-related fatality',     8,  '1904.39(a)(1)', 'Report within 8 hours of learning of the death.'),
+    ('HOSPITALIZATION', 'In-patient hospitalization', 24, '1904.39(a)(2)', 'Admitted as an in-patient. ER visit without admission is NOT reportable.'),
+    ('AMPUTATION',      'Amputation',                24, '1904.39(a)(2)', 'Any work-related amputation.'),
+    ('EYE_LOSS',        'Loss of an eye',            24, '1904.39(a)(2)', 'Any work-related loss of an eye.');
+
+
+-- ============================================================================
+-- REFERENCE: WORK-RELATEDNESS EXCEPTIONS (1904.5(b)(2))
+-- ============================================================================
+-- If an exception applies, the case is NOT work-related and recording stops.
+-- This is Gate 1 of the decision tree.
+
+CREATE TABLE IF NOT EXISTS work_relatedness_exceptions (
+    code TEXT PRIMARY KEY,
+    description TEXT NOT NULL,
+    cfr_reference TEXT DEFAULT '1904.5(b)(2)'
+);
+
+INSERT OR IGNORE INTO work_relatedness_exceptions (code, description) VALUES
+    ('GENERAL_PUBLIC',   'Present at workplace as member of the general public'),
+    ('PREEXISTING',      'Symptoms of non-work-related condition surface at work'),
+    ('WELLNESS',         'Voluntary participation in wellness/fitness/recreation program'),
+    ('FOOD_PERSONAL',    'Eating/drinking food/beverage not provided by employer'),
+    ('PERSONAL_TASK',    'Personal tasks outside assigned working hours'),
+    ('GROOMING',         'Personal grooming, self-medication for non-work condition, self-inflicted'),
+    ('MVA_COMMUTE',      'Motor vehicle accident in parking lot/access road during commute'),
+    ('COLD_FLU',         'Common cold or flu (not work-related contagious disease)'),
+    ('MENTAL_ILLNESS',   'Mental illness, unless PLHCP opinion provided voluntarily by employee');
+
+
+-- ============================================================================
+-- REFERENCE: FIRST AID TREATMENTS (exhaustive list from 1904.7(b)(5)(ii))
+-- ============================================================================
+-- If the ONLY treatment provided is on this list, the case is NOT recordable
+-- under the medical treatment criterion. Anything NOT on this list = medical
+-- treatment = recordable.
+
+CREATE TABLE IF NOT EXISTS first_aid_treatments (
+    code TEXT PRIMARY KEY,
+    description TEXT NOT NULL
+);
+
+INSERT OR IGNORE INTO first_aid_treatments (code, description) VALUES
+    ('OTC_MEDS',         'Non-prescription medications at non-prescription strength'),
+    ('TETANUS',          'Tetanus immunizations (other immunizations = medical treatment)'),
+    ('WOUND_CLEAN',      'Cleaning, flushing, soaking surface wounds'),
+    ('WOUND_COVER',      'Wound coverings: bandages, Band-Aids, gauze, butterfly, Steri-Strips'),
+    ('HOT_COLD',         'Hot or cold therapy'),
+    ('NONRIGID_SUPPORT', 'Non-rigid support: elastic bandages, wraps, non-rigid back belts'),
+    ('TEMP_IMMOBILIZE',  'Temporary immobilization devices used solely for transport'),
+    ('NAIL_BLISTER',     'Drilling nail to relieve pressure, draining fluid from blister'),
+    ('EYE_PATCH',        'Eye patches'),
+    ('EYE_FOREIGN_BODY', 'Removing foreign body from eye using irrigation or cotton swab'),
+    ('SPLINTER',         'Removing splinters/foreign material by irrigation, tweezers, cotton swab'),
+    ('FINGER_GUARD',     'Finger guards'),
+    ('MASSAGE',          'Massages'),
+    ('FLUIDS_HEAT',      'Drinking fluids for relief of heat stress');
+
+
+-- ============================================================================
+-- REFERENCE: CASE CLASSIFICATIONS (OSHA 300 Log columns)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS case_classifications (
+    code TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    osha_300_column TEXT NOT NULL,             -- Which column on the 300 Log
+    is_illness INTEGER DEFAULT 0
+);
+
+INSERT OR IGNORE INTO case_classifications (code, name, osha_300_column, is_illness) VALUES
+    ('INJURY',    'Injury',                 'F',  0),
+    ('SKIN',      'Skin disorder',          'M1', 1),
+    ('RESP',      'Respiratory condition',  'M2', 1),
+    ('POISON',    'Poisoning',              'M3', 1),
+    ('HEARING',   'Hearing loss',           'M4', 1),
+    ('OTHER_ILL', 'All other illnesses',    'M5', 1);
+
+
+-- ============================================================================
+-- REFERENCE: BODY PARTS (OSHA BLS codes)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS body_parts (
+    code TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    category TEXT                               -- head, torso, upper_extremity, lower_extremity, multiple
+);
+
+INSERT OR IGNORE INTO body_parts (code, name, category) VALUES
+    ('HEAD',       'Head',                    'head'),
+    ('EYE',        'Eye(s)',                  'head'),
+    ('EAR',        'Ear(s)',                  'head'),
+    ('FACE',       'Face',                    'head'),
+    ('NECK',       'Neck',                    'head'),
+    ('SHOULDER',   'Shoulder',                'upper_extremity'),
+    ('ARM_UPPER',  'Upper arm',              'upper_extremity'),
+    ('ELBOW',      'Elbow',                  'upper_extremity'),
+    ('ARM_LOWER',  'Lower arm/forearm',      'upper_extremity'),
+    ('WRIST',      'Wrist',                  'upper_extremity'),
+    ('HAND',       'Hand (except fingers)',   'upper_extremity'),
+    ('FINGER',     'Finger(s)',              'upper_extremity'),
+    ('CHEST',      'Chest',                  'torso'),
+    ('BACK_UPPER', 'Upper back',             'torso'),
+    ('BACK_LOWER', 'Lower back',             'torso'),
+    ('ABDOMEN',    'Abdomen',                'torso'),
+    ('HIP',        'Hip',                    'lower_extremity'),
+    ('THIGH',      'Thigh',                  'lower_extremity'),
+    ('KNEE',       'Knee',                   'lower_extremity'),
+    ('LEG_LOWER',  'Lower leg',             'lower_extremity'),
+    ('ANKLE',      'Ankle',                  'lower_extremity'),
+    ('FOOT',       'Foot (except toes)',     'lower_extremity'),
+    ('TOE',        'Toe(s)',                 'lower_extremity'),
+    ('MULTIPLE',   'Multiple body parts',    'multiple'),
+    ('BODY_SYS',   'Body systems',           'multiple');
+
+
+-- ============================================================================
+-- REFERENCE: INCIDENT SEVERITY (Module D — needed for C cross-reference)
+-- ============================================================================
+-- Maps to Module D IncidentSeverity subclasses.
+-- alignsWithRecordingCriteria links severity → recording outcome.
+
+CREATE TABLE IF NOT EXISTS incident_severity_levels (
+    code TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    is_osha_recordable INTEGER DEFAULT 0,      -- Does this severity ALWAYS imply recordability?
+    aligned_recording_criteria TEXT,            -- FK to recording_criteria.code (NULL = not recordable)
+    description TEXT NOT NULL
+);
+
+INSERT OR IGNORE INTO incident_severity_levels (code, name, is_osha_recordable, aligned_recording_criteria, description) VALUES
+    ('FATALITY',    'Fatality',                    1, 'DEATH',      'Death. OSHA 8-hour report + full RCA required.'),
+    ('LOST_TIME',   'Lost Time Incident',          1, 'DAYS_AWAY',  'One or more days away from work beyond day of event.'),
+    ('RESTRICTED',  'Restricted Duty Incident',    1, 'RESTRICTED', 'Employee restricted from routine functions or transferred.'),
+    ('MEDICAL_TX',  'Medical Treatment Incident',  1, 'MEDICAL_TX', 'Medical treatment beyond first aid, no days away or restriction.'),
+    ('FIRST_AID',   'First Aid Incident',          0, NULL,         'First aid only. NOT recordable. Track as leading indicator.'),
+    ('NEAR_MISS',   'Near Miss',                   0, NULL,         'No injury but potential for harm. Best practice to investigate.'),
+    ('PROPERTY',    'Property Damage',             0, NULL,         'Equipment/facility damage, no human injury.'),
+    ('ENVIRONMENTAL','Environmental Incident',     0, NULL,         'Unplanned release. May trigger EPA/EPCRA, not OSHA 300.');
+
+
+-- ============================================================================
+-- INCIDENTS (the event — Module D, but foundation for Module C)
+-- ============================================================================
+-- This is WHAT HAPPENED. The recording decision is separate.
+-- An incident exists whether or not it ends up on the 300 Log.
+
+CREATE TABLE IF NOT EXISTS incidents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    establishment_id INTEGER NOT NULL,
+    employee_id INTEGER,                       -- NULL for non-employee or property/environmental
+
+    -- Case tracking
+    case_number TEXT UNIQUE,                   -- Format: YYYY-NNN per establishment per year
+
+    -- When and where
+    incident_date TEXT NOT NULL,                -- YYYY-MM-DD
+    incident_time TEXT,                         -- HH:MM (24-hour)
+    time_employee_began_work TEXT,              -- OSHA 301 item 11
+    location_description TEXT,
+
+    -- What happened (OSHA 301 items 13-15)
+    activity_description TEXT,                  -- What was employee doing?
+    incident_description TEXT NOT NULL,         -- How did the injury/illness occur?
+    object_or_substance TEXT,                   -- What harmed the employee?
+
+    -- Injury/illness details
+    case_classification_code TEXT,              -- FK → case_classifications
+    body_part_code TEXT,                        -- FK → body_parts
+
+    -- Severity (Module D)
+    severity_code TEXT NOT NULL DEFAULT 'FIRST_AID', -- FK → incident_severity_levels
+
+    -- Treatment
+    treatment_provided TEXT,                    -- What treatment was given
+    treating_physician TEXT,                    -- OSHA 301 item 6
+    treatment_facility TEXT,                    -- OSHA 301 item 7
+    was_hospitalized INTEGER DEFAULT 0,         -- In-patient admission (triggers OSHA 24-hr report)
+    was_er_visit INTEGER DEFAULT 0,
+
+    -- Reporting
+    reported_by TEXT,
+    reported_date TEXT,
+
+    -- Status
+    status TEXT DEFAULT 'reported',             -- reported, investigating, pending_review, closed
+    closed_date TEXT,
+    closed_by TEXT,
+
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+
+    FOREIGN KEY (establishment_id) REFERENCES establishments(id),
+    FOREIGN KEY (employee_id) REFERENCES employees(id),
+    FOREIGN KEY (case_classification_code) REFERENCES case_classifications(code),
+    FOREIGN KEY (body_part_code) REFERENCES body_parts(code),
+    FOREIGN KEY (severity_code) REFERENCES incident_severity_levels(code)
+);
+
+CREATE INDEX idx_incidents_establishment ON incidents(establishment_id);
+CREATE INDEX idx_incidents_date ON incidents(incident_date);
+CREATE INDEX idx_incidents_employee ON incidents(employee_id);
+CREATE INDEX idx_incidents_severity ON incidents(severity_code);
+CREATE INDEX idx_incidents_case_number ON incidents(case_number);
+
+
+-- ============================================================================
+-- RECORDING DECISIONS (the two-gate decision tree — Module C core)
+-- ============================================================================
+-- This is WHERE THE ONTOLOGY LIVES in the database. Every incident gets a
+-- recording decision that documents the two-gate process:
+--   Gate 1: Is it work-related? (presumed yes unless exception applies)
+--   Gate 2: Does it meet any recording criteria?
+--
+-- This table makes the decision auditable — an OSHA inspector can see
+-- exactly WHY a case was or was not recorded, not just a boolean flag.
+
+CREATE TABLE IF NOT EXISTS recording_decisions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    incident_id INTEGER NOT NULL UNIQUE,        -- One decision per incident
+
+    -- Gate 1: Work-relatedness (1904.5)
+    occurred_in_work_environment INTEGER NOT NULL DEFAULT 1,  -- Presumed yes
+    exception_code TEXT,                        -- FK → work_relatedness_exceptions (NULL = no exception)
+    is_work_related INTEGER NOT NULL,           -- Final determination (gate 1 result)
+    work_relatedness_notes TEXT,                -- Reasoning for non-obvious cases
+
+    -- Gate 2: Recording criteria (1904.7-1904.10)
+    -- Which criteria were evaluated and which fired
+    is_recordable INTEGER NOT NULL DEFAULT 0,   -- Final determination (gate 2 result)
+
+    -- Day counts (if applicable)
+    days_away_from_work INTEGER DEFAULT 0,      -- Calendar days, starts day after, capped 180
+    days_restricted_duty INTEGER DEFAULT 0,     -- Calendar days, capped 180
+    days_job_transfer INTEGER DEFAULT 0,        -- Calendar days, capped 180
+
+    -- Privacy case flag
+    is_privacy_case INTEGER DEFAULT 0,          -- Hide employee name on 300 Log
+
+    -- Decision metadata
+    determined_by TEXT,
+    determined_date TEXT,
+    review_notes TEXT,
+
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+
+    FOREIGN KEY (incident_id) REFERENCES incidents(id),
+    FOREIGN KEY (exception_code) REFERENCES work_relatedness_exceptions(code)
+);
+
+CREATE INDEX idx_recording_decisions_incident ON recording_decisions(incident_id);
+CREATE INDEX idx_recording_decisions_recordable ON recording_decisions(is_recordable);
+
+
+-- ============================================================================
+-- RECORDING CRITERIA MET (junction table — which criteria fired)
+-- ============================================================================
+-- An incident can meet multiple recording criteria simultaneously
+-- (e.g., days away AND medical treatment AND loss of consciousness).
+-- Only one 300 Log entry is made, but tracking ALL criteria that fired
+-- matters for audits and for guiding users through the decision.
+
+CREATE TABLE IF NOT EXISTS recording_criteria_met (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    recording_decision_id INTEGER NOT NULL,
+    criteria_code TEXT NOT NULL,                -- FK → recording_criteria
+    notes TEXT,                                 -- Specifics: "STS confirmed on retest 2026-03-15"
+
+    FOREIGN KEY (recording_decision_id) REFERENCES recording_decisions(id) ON DELETE CASCADE,
+    FOREIGN KEY (criteria_code) REFERENCES recording_criteria(code),
+    UNIQUE(recording_decision_id, criteria_code)
+);
+
+
+-- ============================================================================
+-- OSHA DIRECT REPORTS (8-hour / 24-hour reporting obligations)
+-- ============================================================================
+-- Separate from the 300 Log. Tracks whether required reports were filed.
+
+CREATE TABLE IF NOT EXISTS osha_direct_reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    incident_id INTEGER NOT NULL,
+    trigger_code TEXT NOT NULL,                 -- FK → osha_reporting_triggers
+
+    -- Reporting timeline
+    employer_learned_at TEXT NOT NULL,          -- Datetime — clock starts here
+    report_deadline TEXT NOT NULL,              -- Calculated: learned_at + trigger hours
+    reported_at TEXT,                           -- When actually reported (NULL = not yet)
+    reported_via TEXT,                          -- 'phone' or 'online'
+    osha_reference_number TEXT,                 -- Confirmation number from OSHA
+
+    -- Status
+    is_overdue INTEGER GENERATED ALWAYS AS (
+        reported_at IS NULL AND datetime('now') > report_deadline
+    ) STORED,
+
+    created_at TEXT DEFAULT (datetime('now')),
+
+    FOREIGN KEY (incident_id) REFERENCES incidents(id),
+    FOREIGN KEY (trigger_code) REFERENCES osha_reporting_triggers(code)
+);
+
+CREATE INDEX idx_osha_direct_reports_incident ON osha_direct_reports(incident_id);
+
+
+-- ============================================================================
+-- TREATMENTS PROVIDED (tracks what was actually done — first aid vs medical)
+-- ============================================================================
+-- Links to first_aid_treatments reference table where applicable.
+-- If the treatment IS on the first aid list → not recordable via MEDICAL_TX.
+-- If the treatment is NOT on the list → medical treatment → recordable.
+
+CREATE TABLE IF NOT EXISTS incident_treatments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    incident_id INTEGER NOT NULL,
+    treatment_description TEXT NOT NULL,
+    first_aid_code TEXT,                        -- FK → first_aid_treatments (NULL = medical treatment)
+    is_first_aid INTEGER NOT NULL,              -- Explicit flag for clarity
+    provided_by TEXT,
+    provided_date TEXT,
+
+    FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE CASCADE,
+    FOREIGN KEY (first_aid_code) REFERENCES first_aid_treatments(code)
+);
+
+CREATE INDEX idx_incident_treatments_incident ON incident_treatments(incident_id);
+
+
+-- ============================================================================
+-- WITNESSES (normalized out of the incident table)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS incident_witnesses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    incident_id INTEGER NOT NULL,
+    witness_name TEXT NOT NULL,
+    witness_phone TEXT,
+    statement TEXT,
+    statement_date TEXT,
+
+    FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE CASCADE
+);
+
+
+-- ============================================================================
+-- OSHA 300A ANNUAL SUMMARIES
+-- ============================================================================
+-- Calculated from incident + recording_decision data.
+-- Stored for historical reference and certification tracking.
+
+CREATE TABLE IF NOT EXISTS osha_300a_summaries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    establishment_id INTEGER NOT NULL,
+    year INTEGER NOT NULL,
+
+    -- Establishment info at time of summary
+    annual_avg_employees INTEGER,
+    total_hours_worked INTEGER,
+
+    -- Case counts by severity (OSHA 300A Section 1)
+    total_deaths INTEGER DEFAULT 0,
+    total_days_away_cases INTEGER DEFAULT 0,
+    total_restricted_transfer_cases INTEGER DEFAULT 0,
+    total_other_recordable_cases INTEGER DEFAULT 0,
+
+    -- Day counts (OSHA 300A Section 2)
+    total_days_away INTEGER DEFAULT 0,
+    total_days_restricted INTEGER DEFAULT 0,
+
+    -- Case counts by type (OSHA 300A Section 3)
+    injury_count INTEGER DEFAULT 0,
+    skin_disorder_count INTEGER DEFAULT 0,
+    respiratory_count INTEGER DEFAULT 0,
+    poisoning_count INTEGER DEFAULT 0,
+    hearing_loss_count INTEGER DEFAULT 0,
+    other_illness_count INTEGER DEFAULT 0,
+
+    -- Calculated rates (stored for convenience, derived from above)
+    trir REAL,                                  -- (total recordable × 200000) / hours worked
+    dart_rate REAL,                             -- ((days_away + restricted_transfer) × 200000) / hours worked
+    ltir REAL,                                  -- (days_away_cases × 200000) / hours worked
+    severity_rate REAL,                         -- ((total_days_away + total_days_restricted) × 200000) / hours worked
+
+    -- Certification (must be company executive)
+    certified_by TEXT,
+    certified_title TEXT,
+    certified_phone TEXT,
+    certified_date TEXT,                        -- Must be completed by Feb 1, posted Feb 1 - Apr 30
+
+    -- ITA electronic submission
+    ita_submission_required INTEGER DEFAULT 0,
+    ita_submission_tier TEXT,                   -- '300A_only' or '300_301_300A'
+    ita_submitted_date TEXT,                    -- Due March 2
+
+    generated_at TEXT DEFAULT (datetime('now')),
+
+    FOREIGN KEY (establishment_id) REFERENCES establishments(id),
+    UNIQUE(establishment_id, year)
+);
+
+
+-- ============================================================================
+-- INVESTIGATION + CORRECTIVE ACTIONS (Module D, needed for complete workflow)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS incident_investigations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    incident_id INTEGER NOT NULL,
+
+    -- Investigation metadata
+    initiated_date TEXT NOT NULL,
+    completed_date TEXT,
+    lead_investigator TEXT,
+
+    -- Root cause analysis
+    rca_method TEXT,                            -- 'five_whys', 'fishbone', 'fault_tree', 'taproot'
+    root_causes TEXT,                           -- Systemic failures, NOT "employee error"
+    contributing_factors TEXT,
+    immediate_actions_taken TEXT,
+
+    -- ARECC connection (which phase does this feed back into?)
+    arecc_phase TEXT,                           -- 'anticipate', 'recognize', 'evaluate', 'control', 'confirm'
+
+    -- Status
+    status TEXT DEFAULT 'open',                 -- open, in_progress, completed, reviewed
+
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+
+    FOREIGN KEY (incident_id) REFERENCES incidents(id)
+);
+
+CREATE INDEX idx_investigations_incident ON incident_investigations(incident_id);
+
+CREATE TABLE IF NOT EXISTS investigation_team_members (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    investigation_id INTEGER NOT NULL,
+    employee_id INTEGER,                        -- NULL for external participants
+    name TEXT NOT NULL,
+    role TEXT,                                   -- 'lead', 'supervisor', 'ehs', 'employee_rep', 'sme'
+
+    FOREIGN KEY (investigation_id) REFERENCES incident_investigations(id) ON DELETE CASCADE,
+    FOREIGN KEY (employee_id) REFERENCES employees(id)
+);
+
+CREATE TABLE IF NOT EXISTS corrective_actions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    investigation_id INTEGER NOT NULL,
+
+    description TEXT NOT NULL,
+
+    -- Hierarchy of Controls link (from ontology ControlMeasure)
+    hierarchy_level TEXT NOT NULL,              -- 'elimination', 'substitution', 'engineering', 'administrative', 'ppe'
+    hierarchy_justification TEXT,               -- Required if administrative or PPE: why not higher?
+
+    -- Assignment and tracking
+    assigned_to TEXT,
+    due_date TEXT,
+
+    -- Status lifecycle (from ontology CorrectiveActionStatus)
+    status TEXT DEFAULT 'open',                -- open, in_progress, completed, verified, overdue
+
+    -- Completion
+    completed_date TEXT,
+    completed_by TEXT,
+
+    -- Verification (the critical step — action isn't done until effectiveness confirmed)
+    verified_date TEXT,
+    verified_by TEXT,
+    verification_notes TEXT,
+
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+
+    FOREIGN KEY (investigation_id) REFERENCES incident_investigations(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_corrective_actions_investigation ON corrective_actions(investigation_id);
+CREATE INDEX idx_corrective_actions_status ON corrective_actions(status);
+CREATE INDEX idx_corrective_actions_due_date ON corrective_actions(due_date);
