@@ -172,6 +172,319 @@ func (s *Server) writeRoutes() {
 			return s.repo.DeleteChemical(user, id)
 		},
 	))
+
+	// -- Training Courses --
+	s.mux.HandleFunc("POST /api/training/courses", s.handleCreate(
+		func(user string, body []byte) (int64, error) {
+			var in repository.TrainingCourseInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return 0, err
+			}
+			return s.repo.CreateTrainingCourse(user, in)
+		},
+	))
+	s.mux.HandleFunc("PUT /api/training/courses/{id}", s.handleUpdate(
+		func(user string, id int64, body []byte) error {
+			var in repository.TrainingCourseInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return err
+			}
+			return s.repo.UpdateTrainingCourse(user, id, in)
+		},
+	))
+	s.mux.HandleFunc("DELETE /api/training/courses/{id}", s.handleDelete(
+		func(user string, id int64) error {
+			return s.repo.DeleteTrainingCourse(user, id)
+		},
+	))
+
+	// -- Training Completions --
+	s.mux.HandleFunc("POST /api/training/completions", s.handleCreate(
+		func(user string, body []byte) (int64, error) {
+			var in repository.TrainingCompletionInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return 0, err
+			}
+			return s.repo.CreateTrainingCompletion(user, in)
+		},
+	))
+	s.mux.HandleFunc("DELETE /api/training/completions/{id}", s.handleDelete(
+		func(user string, id int64) error {
+			return s.repo.DeleteTrainingCompletion(user, id)
+		},
+	))
+
+	// -- Training Assignments --
+	s.mux.HandleFunc("POST /api/training/assignments", s.handleCreate(
+		func(user string, body []byte) (int64, error) {
+			var in repository.TrainingAssignmentInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return 0, err
+			}
+			return s.repo.CreateTrainingAssignment(user, in)
+		},
+	))
+	s.mux.HandleFunc("POST /api/training/assignments/{id}/complete", s.handleAction(
+		func(user string, id int64, body []byte) error {
+			var req struct {
+				CompletionID int64 `json:"completion_id"`
+			}
+			json.Unmarshal(body, &req)
+			return s.repo.CompleteTrainingAssignment(user, id, req.CompletionID)
+		},
+	))
+	s.mux.HandleFunc("POST /api/training/assignments/{id}/cancel", s.handleAction(
+		func(user string, id int64, _ []byte) error {
+			return s.repo.CancelTrainingAssignment(user, id)
+		},
+	))
+	s.mux.HandleFunc("DELETE /api/training/assignments/{id}", s.handleDelete(
+		func(user string, id int64) error {
+			return s.repo.DeleteTrainingAssignment(user, id)
+		},
+	))
+
+	// -- Inspections --
+	s.mux.HandleFunc("POST /api/inspections", s.handleCreate(
+		func(user string, body []byte) (int64, error) {
+			var in repository.InspectionInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return 0, err
+			}
+			return s.repo.CreateInspection(user, in)
+		},
+	))
+	s.mux.HandleFunc("PUT /api/inspections/{id}", s.handleUpdate(
+		func(user string, id int64, body []byte) error {
+			var in repository.InspectionInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return err
+			}
+			return s.repo.UpdateInspection(user, id, in)
+		},
+	))
+	s.mux.HandleFunc("POST /api/inspections/{id}/complete", s.handleAction(
+		func(user string, id int64, _ []byte) error {
+			return s.repo.CompleteInspection(user, id)
+		},
+	))
+	s.mux.HandleFunc("DELETE /api/inspections/{id}", s.handleDelete(
+		func(user string, id int64) error {
+			return s.repo.DeleteInspection(user, id)
+		},
+	))
+
+	// -- Inspection Findings --
+	s.mux.HandleFunc("POST /api/inspection-findings", s.handleCreate(
+		func(user string, body []byte) (int64, error) {
+			var in repository.InspectionFindingInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return 0, err
+			}
+			return s.repo.CreateInspectionFinding(user, in)
+		},
+	))
+	s.mux.HandleFunc("POST /api/inspection-findings/{id}/close", s.handleAction(
+		func(user string, id int64, body []byte) error {
+			var req struct {
+				Notes string `json:"notes"`
+			}
+			json.Unmarshal(body, &req)
+			return s.repo.CloseInspectionFinding(user, id, req.Notes)
+		},
+	))
+	s.mux.HandleFunc("DELETE /api/inspection-findings/{id}", s.handleDelete(
+		func(user string, id int64) error {
+			return s.repo.DeleteInspectionFinding(user, id)
+		},
+	))
+
+	// -- Audits --
+	s.mux.HandleFunc("POST /api/audits", s.handleCreate(
+		func(user string, body []byte) (int64, error) {
+			var in repository.AuditInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return 0, err
+			}
+			return s.repo.CreateAudit(user, in)
+		},
+	))
+	s.mux.HandleFunc("PUT /api/audits/{id}", s.handleUpdate(
+		func(user string, id int64, body []byte) error {
+			var in repository.AuditInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return err
+			}
+			return s.repo.UpdateAudit(user, id, in)
+		},
+	))
+	s.mux.HandleFunc("POST /api/audits/{id}/close", s.handleAction(
+		func(user string, id int64, _ []byte) error {
+			return s.repo.CloseAudit(user, id)
+		},
+	))
+	s.mux.HandleFunc("DELETE /api/audits/{id}", s.handleDelete(
+		func(user string, id int64) error {
+			return s.repo.DeleteAudit(user, id)
+		},
+	))
+
+	// -- Audit Findings --
+	s.mux.HandleFunc("POST /api/audit-findings", s.handleCreate(
+		func(user string, body []byte) (int64, error) {
+			var in repository.AuditFindingInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return 0, err
+			}
+			return s.repo.CreateAuditFinding(user, in)
+		},
+	))
+	s.mux.HandleFunc("POST /api/audit-findings/{id}/verify", s.handleAction(
+		func(user string, id int64, body []byte) error {
+			var req struct {
+				Notes string `json:"notes"`
+			}
+			json.Unmarshal(body, &req)
+			return s.repo.VerifyAuditFinding(user, id, req.Notes)
+		},
+	))
+	s.mux.HandleFunc("DELETE /api/audit-findings/{id}", s.handleDelete(
+		func(user string, id int64) error {
+			return s.repo.DeleteAuditFinding(user, id)
+		},
+	))
+
+	// -- Permits --
+	s.mux.HandleFunc("POST /api/permits", s.handleCreate(
+		func(user string, body []byte) (int64, error) {
+			var in repository.PermitInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return 0, err
+			}
+			return s.repo.CreatePermit(user, in)
+		},
+	))
+	s.mux.HandleFunc("PUT /api/permits/{id}", s.handleUpdate(
+		func(user string, id int64, body []byte) error {
+			var in repository.PermitInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return err
+			}
+			return s.repo.UpdatePermit(user, id, in)
+		},
+	))
+	s.mux.HandleFunc("POST /api/permits/{id}/revoke", s.handleAction(
+		func(user string, id int64, _ []byte) error {
+			return s.repo.RevokePermit(user, id)
+		},
+	))
+	s.mux.HandleFunc("DELETE /api/permits/{id}", s.handleDelete(
+		func(user string, id int64) error {
+			return s.repo.DeletePermit(user, id)
+		},
+	))
+
+	// -- Waste Streams --
+	s.mux.HandleFunc("POST /api/waste-streams", s.handleCreate(
+		func(user string, body []byte) (int64, error) {
+			var in repository.WasteStreamInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return 0, err
+			}
+			return s.repo.CreateWasteStream(user, in)
+		},
+	))
+	s.mux.HandleFunc("PUT /api/waste-streams/{id}", s.handleUpdate(
+		func(user string, id int64, body []byte) error {
+			var in repository.WasteStreamInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return err
+			}
+			return s.repo.UpdateWasteStream(user, id, in)
+		},
+	))
+	s.mux.HandleFunc("POST /api/waste-streams/{id}/deactivate", s.handleAction(
+		func(user string, id int64, _ []byte) error {
+			return s.repo.DeactivateWasteStream(user, id)
+		},
+	))
+	s.mux.HandleFunc("DELETE /api/waste-streams/{id}", s.handleDelete(
+		func(user string, id int64) error {
+			return s.repo.DeleteWasteStream(user, id)
+		},
+	))
+
+	// -- PPE Items --
+	s.mux.HandleFunc("POST /api/ppe/items", s.handleCreate(
+		func(user string, body []byte) (int64, error) {
+			var in repository.PPEItemInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return 0, err
+			}
+			return s.repo.CreatePPEItem(user, in)
+		},
+	))
+	s.mux.HandleFunc("PUT /api/ppe/items/{id}", s.handleUpdate(
+		func(user string, id int64, body []byte) error {
+			var in repository.PPEItemInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return err
+			}
+			return s.repo.UpdatePPEItem(user, id, in)
+		},
+	))
+	s.mux.HandleFunc("POST /api/ppe/items/{id}/retire", s.handleAction(
+		func(user string, id int64, _ []byte) error {
+			return s.repo.RetirePPEItem(user, id)
+		},
+	))
+	s.mux.HandleFunc("DELETE /api/ppe/items/{id}", s.handleDelete(
+		func(user string, id int64) error {
+			return s.repo.DeletePPEItem(user, id)
+		},
+	))
+
+	// -- PPE Assignments --
+	s.mux.HandleFunc("POST /api/ppe/assignments", s.handleCreate(
+		func(user string, body []byte) (int64, error) {
+			var in repository.PPEAssignmentInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return 0, err
+			}
+			return s.repo.CreatePPEAssignment(user, in)
+		},
+	))
+	s.mux.HandleFunc("POST /api/ppe/assignments/{id}/return", s.handleAction(
+		func(user string, id int64, body []byte) error {
+			var req struct {
+				Condition string `json:"condition"`
+				Notes     string `json:"notes"`
+			}
+			json.Unmarshal(body, &req)
+			return s.repo.ReturnPPEAssignment(user, id, req.Condition, req.Notes)
+		},
+	))
+	s.mux.HandleFunc("DELETE /api/ppe/assignments/{id}", s.handleDelete(
+		func(user string, id int64) error {
+			return s.repo.DeletePPEAssignment(user, id)
+		},
+	))
+
+	// -- PPE Inspections --
+	s.mux.HandleFunc("POST /api/ppe/inspections", s.handleCreate(
+		func(user string, body []byte) (int64, error) {
+			var in repository.PPEInspectionInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return 0, err
+			}
+			return s.repo.CreatePPEInspection(user, in)
+		},
+	))
+	s.mux.HandleFunc("DELETE /api/ppe/inspections/{id}", s.handleDelete(
+		func(user string, id int64) error {
+			return s.repo.DeletePPEInspection(user, id)
+		},
+	))
 }
 
 // Handler factories — reduce boilerplate across write endpoints.
