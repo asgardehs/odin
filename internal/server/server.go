@@ -8,6 +8,7 @@ import (
 
 	"github.com/asgardehs/odin/internal/audit"
 	"github.com/asgardehs/odin/internal/auth"
+	"github.com/asgardehs/odin/internal/database"
 )
 
 // Server is the Odin HTTP server.
@@ -16,15 +17,17 @@ type Server struct {
 	frontend fs.FS
 	audit    *audit.Store
 	auth     auth.Authenticator
+	db       *database.DB
 }
 
 // New creates a server that serves the embedded frontend and API routes.
-func New(frontend fs.FS, authenticator auth.Authenticator, auditStore *audit.Store) *Server {
+func New(frontend fs.FS, authenticator auth.Authenticator, auditStore *audit.Store, db *database.DB) *Server {
 	s := &Server{
 		mux:      http.NewServeMux(),
 		frontend: frontend,
 		audit:    auditStore,
 		auth:     authenticator,
+		db:       db,
 	}
 	s.routes()
 	return s

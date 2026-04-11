@@ -32,7 +32,7 @@ func newTestServer(t *testing.T) *Server {
 		t.Fatalf("NewStore: %v", err)
 	}
 
-	return New(frontend, a, store)
+	return New(frontend, a, store, nil)
 }
 
 func TestHealthEndpoint(t *testing.T) {

@@ -14,6 +14,7 @@ import (
 
 	odin "github.com/asgardehs/odin"
 	"github.com/asgardehs/odin/internal/audit"
+	"github.com/asgardehs/odin/internal/database"
 	"github.com/asgardehs/odin/internal/server"
 )
 
@@ -29,18 +30,38 @@ func main() {
 	// Set up OS-level authenticator.
 	authenticator := newAuthenticator()
 
-	// Set up git-backed audit trail.
+	// Set up data directory.
 	dataDir, err := odinDataDir()
 	if err != nil {
 		log.Fatalf("data directory: %v", err)
 	}
+
+	// Open EHS database and run schema migrations.
+	sqlFS, err := fs.Sub(odin.SchemaSQL, "docs/database-design/sql")
+	if err != nil {
+		log.Fatalf("embedded schema not found: %v", err)
+	}
+	migrations, err := database.CollectMigrations(sqlFS)
+	if err != nil {
+		log.Fatalf("collect migrations: %v", err)
+	}
+	db, err := database.Open(filepath.Join(dataDir, "odin.db"))
+	if err != nil {
+		log.Fatalf("database: %v", err)
+	}
+	defer db.Close()
+	if err := database.Migrate(db, migrations); err != nil {
+		log.Fatalf("migrate: %v", err)
+	}
+
+	// Set up git-backed audit trail.
 	auditStore, err := audit.NewStore(filepath.Join(dataDir, "audit"), authenticator)
 	if err != nil {
 		log.Fatalf("audit store: %v", err)
 	}
 
 	addr := "odin.localhost:8080"
-	srv := server.New(dist, authenticator, auditStore)
+	srv := server.New(dist, authenticator, auditStore, db)
 
 	// Graceful shutdown on interrupt.
 	stop := make(chan os.Signal, 1)
