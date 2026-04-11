@@ -11,9 +11,11 @@ import (
 	"path/filepath"
 	"runtime"
 	"syscall"
+	"time"
 
 	odin "github.com/asgardehs/odin"
 	"github.com/asgardehs/odin/internal/audit"
+	"github.com/asgardehs/odin/internal/auth"
 	"github.com/asgardehs/odin/internal/database"
 	"github.com/asgardehs/odin/internal/server"
 )
@@ -54,14 +56,33 @@ func main() {
 		log.Fatalf("migrate: %v", err)
 	}
 
+	// Run application-level migrations (auth tables, etc.).
+	appMigFS, err := fs.Sub(odin.AppMigrations, "embed/migrations")
+	if err != nil {
+		log.Fatalf("embedded app migrations not found: %v", err)
+	}
+	appMigrations, err := database.CollectAppMigrations(appMigFS)
+	if err != nil {
+		log.Fatalf("collect app migrations: %v", err)
+	}
+	if err := database.Migrate(db, appMigrations); err != nil {
+		log.Fatalf("app migrate: %v", err)
+	}
+
 	// Set up git-backed audit trail.
 	auditStore, err := audit.NewStore(filepath.Join(dataDir, "audit"), authenticator)
 	if err != nil {
 		log.Fatalf("audit store: %v", err)
 	}
 
+	// Set up application-level user and session stores.
+	userStore := auth.NewUserStore(db)
+	sessionStore := auth.NewSessionStore(db, 24*time.Hour)
+	sessionStore.CleanExpired()
+	recoveryStore := auth.NewRecoveryStore(db)
+
 	addr := "odin.localhost:8080"
-	srv := server.New(dist, authenticator, auditStore, db)
+	srv := server.New(dist, authenticator, auditStore, db, userStore, sessionStore, recoveryStore)
 
 	// Graceful shutdown on interrupt.
 	stop := make(chan os.Signal, 1)

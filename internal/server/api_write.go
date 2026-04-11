@@ -488,19 +488,22 @@ func (s *Server) writeRoutes() {
 }
 
 // Handler factories — reduce boilerplate across write endpoints.
-// All write endpoints use the OS username from the authenticator.
+// All write endpoints require a valid session token (Bearer auth).
 
 // handleCreate returns a handler that decodes a JSON body, calls the
 // create function, and returns the new entity's ID.
 func (s *Server) handleCreate(fn func(user string, body []byte) (int64, error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		authedUser := s.requireAuth(w, r)
+		if authedUser == nil {
+			return
+		}
 		body, err := readBody(r)
 		if err != nil {
 			writeError(w, "invalid request body", http.StatusBadRequest)
 			return
 		}
-		user := s.auth.CurrentUser()
-		id, err := fn(user, body)
+		id, err := fn(authedUser.Username, body)
 		if err != nil {
 			writeError(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -514,6 +517,10 @@ func (s *Server) handleCreate(fn func(user string, body []byte) (int64, error)) 
 // calls the update function.
 func (s *Server) handleUpdate(fn func(user string, id int64, body []byte) error) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		authedUser := s.requireAuth(w, r)
+		if authedUser == nil {
+			return
+		}
 		id, err := parseID(r)
 		if err != nil {
 			writeError(w, "invalid id", http.StatusBadRequest)
@@ -524,8 +531,7 @@ func (s *Server) handleUpdate(fn func(user string, id int64, body []byte) error)
 			writeError(w, "invalid request body", http.StatusBadRequest)
 			return
 		}
-		user := s.auth.CurrentUser()
-		if err := fn(user, id, body); err != nil {
+		if err := fn(authedUser.Username, id, body); err != nil {
 			writeError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -536,13 +542,16 @@ func (s *Server) handleUpdate(fn func(user string, id int64, body []byte) error)
 // handleDelete returns a handler that deletes a resource by path ID.
 func (s *Server) handleDelete(fn func(user string, id int64) error) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		authedUser := s.requireAuth(w, r)
+		if authedUser == nil {
+			return
+		}
 		id, err := parseID(r)
 		if err != nil {
 			writeError(w, "invalid id", http.StatusBadRequest)
 			return
 		}
-		user := s.auth.CurrentUser()
-		if err := fn(user, id); err != nil {
+		if err := fn(authedUser.Username, id); err != nil {
 			writeError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -554,14 +563,17 @@ func (s *Server) handleDelete(fn func(user string, id int64) error) http.Handler
 // (close, complete, verify, deactivate, discontinue).
 func (s *Server) handleAction(fn func(user string, id int64, body []byte) error) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		authedUser := s.requireAuth(w, r)
+		if authedUser == nil {
+			return
+		}
 		id, err := parseID(r)
 		if err != nil {
 			writeError(w, "invalid id", http.StatusBadRequest)
 			return
 		}
 		body, _ := readBody(r) // body is optional for actions
-		user := s.auth.CurrentUser()
-		if err := fn(user, id, body); err != nil {
+		if err := fn(authedUser.Username, id, body); err != nil {
 			writeError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

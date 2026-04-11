@@ -1,20 +1,36 @@
 package server
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"github.com/asgardehs/odin/internal/audit"
+	"github.com/asgardehs/odin/internal/auth"
 	"github.com/asgardehs/odin/internal/database"
 )
 
+// testContext holds a test server + session token for authenticated requests.
+type testContext struct {
+	srv   *Server
+	token string
+}
+
+// authRequest adds the test session token to a request.
+func (tc *testContext) authRequest(req *http.Request) *http.Request {
+	req.Header.Set("Authorization", "Bearer "+tc.token)
+	return req
+}
+
 // newTestServerWithDB creates a server backed by an in-memory database
-// with all EHS schema modules applied.
-func newTestServerWithDB(t *testing.T) *Server {
+// with all EHS schema modules and auth tables applied, a seeded test
+// user, and a valid session token.
+func newTestServerWithDB(t *testing.T) *testContext {
 	t.Helper()
 
 	frontend := fstest.MapFS{
@@ -33,6 +49,7 @@ func newTestServerWithDB(t *testing.T) *Server {
 	}
 	t.Cleanup(func() { db.Close() })
 
+	// Apply EHS schema migrations.
 	sqlDir := os.DirFS("../../docs/database-design/sql")
 	migrations, err := database.CollectMigrations(sqlDir)
 	if err != nil {
@@ -40,6 +57,15 @@ func newTestServerWithDB(t *testing.T) *Server {
 	}
 	if err := database.Migrate(db, migrations); err != nil {
 		t.Fatalf("migrate: %v", err)
+	}
+
+	// Apply auth migration.
+	authSQL, err := os.ReadFile("../../embed/migrations/001_app_auth.sql")
+	if err != nil {
+		t.Fatalf("read auth migration: %v", err)
+	}
+	if err := db.Exec(string(authSQL)); err != nil {
+		t.Fatalf("auth migrate: %v", err)
 	}
 
 	// Seed a test establishment so FK-dependent queries work.
@@ -51,13 +77,34 @@ func newTestServerWithDB(t *testing.T) *Server {
 		t.Fatalf("seed establishment: %v", err)
 	}
 
-	return New(frontend, a, store, db)
+	// Create user and session stores, seed a test user and session.
+	userStore := auth.NewUserStore(db)
+	sessionStore := auth.NewSessionStore(db, 24*time.Hour)
+
+	userID, err := userStore.Create(auth.UserInput{
+		Username:    "testuser",
+		DisplayName: "Test User",
+		Password:    "testpass",
+		Role:        "admin",
+	})
+	if err != nil {
+		t.Fatalf("create test user: %v", err)
+	}
+
+	token, err := sessionStore.Create(userID, "127.0.0.1")
+	if err != nil {
+		t.Fatalf("create test session: %v", err)
+	}
+
+	recoveryStore := auth.NewRecoveryStore(db)
+	srv := New(frontend, a, store, db, userStore, sessionStore, recoveryStore)
+	return &testContext{srv: srv, token: token}
 }
 
 // TestListEndpointsReturn200 verifies all list endpoints respond with
 // valid paginated JSON, even when tables are empty.
 func TestListEndpointsReturn200(t *testing.T) {
-	srv := newTestServerWithDB(t)
+	tc := newTestServerWithDB(t)
 
 	endpoints := []string{
 		"/api/establishments",
@@ -81,7 +128,7 @@ func TestListEndpointsReturn200(t *testing.T) {
 		t.Run(ep, func(t *testing.T) {
 			req := httptest.NewRequest("GET", ep, nil)
 			w := httptest.NewRecorder()
-			srv.mux.ServeHTTP(w, req)
+			tc.srv.mux.ServeHTTP(w, req)
 
 			if w.Code != http.StatusOK {
 				t.Errorf("GET %s = %d, want 200; body: %s", ep, w.Code, w.Body.String())
@@ -102,7 +149,7 @@ func TestListEndpointsReturn200(t *testing.T) {
 
 // TestGetByIDReturns404 verifies get-by-ID returns 404 for missing records.
 func TestGetByIDReturns404(t *testing.T) {
-	srv := newTestServerWithDB(t)
+	tc := newTestServerWithDB(t)
 
 	endpoints := []string{
 		"/api/establishments/999",
@@ -115,7 +162,7 @@ func TestGetByIDReturns404(t *testing.T) {
 		t.Run(ep, func(t *testing.T) {
 			req := httptest.NewRequest("GET", ep, nil)
 			w := httptest.NewRecorder()
-			srv.mux.ServeHTTP(w, req)
+			tc.srv.mux.ServeHTTP(w, req)
 
 			if w.Code != http.StatusNotFound {
 				t.Errorf("GET %s = %d, want 404", ep, w.Code)
@@ -126,12 +173,12 @@ func TestGetByIDReturns404(t *testing.T) {
 
 // TestGetByIDReturns200 verifies get-by-ID returns data for existing records.
 func TestGetByIDReturns200(t *testing.T) {
-	srv := newTestServerWithDB(t)
+	tc := newTestServerWithDB(t)
 
 	// Establishment 1 was seeded in setup.
 	req := httptest.NewRequest("GET", "/api/establishments/1", nil)
 	w := httptest.NewRecorder()
-	srv.mux.ServeHTTP(w, req)
+	tc.srv.mux.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("GET /api/establishments/1 = %d, want 200; body: %s", w.Code, w.Body.String())
@@ -148,11 +195,11 @@ func TestGetByIDReturns200(t *testing.T) {
 
 // TestDashboardCounts verifies the dashboard endpoint returns counts.
 func TestDashboardCounts(t *testing.T) {
-	srv := newTestServerWithDB(t)
+	tc := newTestServerWithDB(t)
 
 	req := httptest.NewRequest("GET", "/api/dashboard/counts", nil)
 	w := httptest.NewRecorder()
-	srv.mux.ServeHTTP(w, req)
+	tc.srv.mux.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("GET /api/dashboard/counts = %d; body: %s", w.Code, w.Body.String())
@@ -174,12 +221,12 @@ func TestDashboardCounts(t *testing.T) {
 
 // TestPagination verifies pagination parameters work.
 func TestPagination(t *testing.T) {
-	srv := newTestServerWithDB(t)
+	tc := newTestServerWithDB(t)
 
 	// Training courses were seeded (13 courses for establishment 1).
 	req := httptest.NewRequest("GET", "/api/training/courses?page=1&per_page=5", nil)
 	w := httptest.NewRecorder()
-	srv.mux.ServeHTTP(w, req)
+	tc.srv.mux.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d; body: %s", w.Code, w.Body.String())
@@ -204,5 +251,18 @@ func TestPagination(t *testing.T) {
 	}
 	if result.TotalPages != 3 {
 		t.Errorf("total_pages = %d, want 3", result.TotalPages)
+	}
+}
+
+// TestWriteRequiresAuth verifies write endpoints return 401 without auth.
+func TestWriteRequiresAuth(t *testing.T) {
+	tc := newTestServerWithDB(t)
+
+	req := httptest.NewRequest("POST", "/api/establishments", bytes.NewBufferString(`{"name":"Test"}`))
+	w := httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("POST without auth = %d, want 401", w.Code)
 	}
 }

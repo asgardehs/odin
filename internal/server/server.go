@@ -20,10 +20,13 @@ type Server struct {
 	auth     auth.Authenticator
 	db       *database.DB
 	repo     *repository.Repo
+	users    *auth.UserStore
+	sessions *auth.SessionStore
+	recovery *auth.RecoveryStore
 }
 
 // New creates a server that serves the embedded frontend and API routes.
-func New(frontend fs.FS, authenticator auth.Authenticator, auditStore *audit.Store, db *database.DB) *Server {
+func New(frontend fs.FS, authenticator auth.Authenticator, auditStore *audit.Store, db *database.DB, users *auth.UserStore, sessions *auth.SessionStore, recovery *auth.RecoveryStore) *Server {
 	var repo *repository.Repo
 	if db != nil && auditStore != nil {
 		repo = &repository.Repo{DB: db, Audit: auditStore}
@@ -35,6 +38,9 @@ func New(frontend fs.FS, authenticator auth.Authenticator, auditStore *audit.Sto
 		auth:     authenticator,
 		db:       db,
 		repo:     repo,
+		users:    users,
+		sessions: sessions,
+		recovery: recovery,
 	}
 	s.routes()
 	return s
@@ -53,6 +59,30 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/auth/whoami", s.handleWhoAmI)
 	s.mux.HandleFunc("GET /api/audit/{module}/{entityID}", s.handleAuditHistory)
 	s.mux.HandleFunc("POST /api/audit/export", s.handleAuditExport)
+
+	// Application auth routes.
+	s.mux.HandleFunc("POST /api/auth/login", s.handleLogin)
+	s.mux.HandleFunc("POST /api/auth/logout", s.handleLogout)
+	s.mux.HandleFunc("POST /api/auth/setup", s.handleSetup)
+	s.mux.HandleFunc("GET /api/auth/me", s.handleMe)
+
+	// Self-service password reset via security questions.
+	s.mux.HandleFunc("POST /api/auth/security-questions", s.handleSetSecurityQuestions)
+	s.mux.HandleFunc("GET /api/auth/security-questions/{username}", s.handleGetSecurityQuestions)
+	s.mux.HandleFunc("POST /api/auth/reset-password", s.handleResetPassword)
+
+	// Disaster recovery — recovery key generated at setup, used to
+	// regain admin access when all passwords are lost.
+	s.mux.HandleFunc("POST /api/auth/recover", s.handleRecover)
+	s.mux.HandleFunc("POST /api/auth/regenerate-recovery-key", s.handleRegenerateRecoveryKey)
+
+	// User management routes (admin only).
+	s.mux.HandleFunc("GET /api/users", s.handleListUsers)
+	s.mux.HandleFunc("POST /api/users", s.handleCreateUser)
+	s.mux.HandleFunc("GET /api/users/{id}", s.handleGetUser)
+	s.mux.HandleFunc("PUT /api/users/{id}", s.handleUpdateUser)
+	s.mux.HandleFunc("POST /api/users/{id}/deactivate", s.handleDeactivateUser)
+	s.mux.HandleFunc("POST /api/users/{id}/password", s.handleSetUserPassword)
 
 	// Data API routes (requires database).
 	s.apiRoutes()

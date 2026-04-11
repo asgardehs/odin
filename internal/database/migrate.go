@@ -146,3 +146,33 @@ func migrationApplied(db *DB, name string) (bool, error) {
 	stmt.BindText(1, name)
 	return stmt.Step(), nil
 }
+
+// CollectAppMigrations reads all *.sql files from sqlFS and returns
+// them sorted alphabetically (numeric prefix ordering: 001_, 002_, etc.).
+// This is used for application-level migrations that don't follow the
+// EHS module naming convention.
+func CollectAppMigrations(sqlFS fs.FS) ([]Migration, error) {
+	entries, err := fs.ReadDir(sqlFS, ".")
+	if err != nil {
+		return nil, fmt.Errorf("migrate: read dir: %w", err)
+	}
+
+	var migrations []Migration
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() || !strings.HasSuffix(name, ".sql") {
+			continue
+		}
+		data, err := fs.ReadFile(sqlFS, name)
+		if err != nil {
+			return nil, fmt.Errorf("migrate: read %s: %w", name, err)
+		}
+		migrations = append(migrations, Migration{Name: name, SQL: string(data)})
+	}
+
+	sort.Slice(migrations, func(i, j int) bool {
+		return migrations[i].Name < migrations[j].Name
+	})
+
+	return migrations, nil
+}

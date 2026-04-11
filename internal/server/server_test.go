@@ -14,7 +14,7 @@ import (
 type mockAuth struct{ user string }
 
 func (m *mockAuth) Verify(_, _ string) error { return nil }
-func (m *mockAuth) CurrentUser() string       { return m.user }
+func (m *mockAuth) CurrentUser() string      { return m.user }
 
 func newTestServer(t *testing.T) *Server {
 	t.Helper()
@@ -32,7 +32,7 @@ func newTestServer(t *testing.T) *Server {
 		t.Fatalf("NewStore: %v", err)
 	}
 
-	return New(frontend, a, store, nil)
+	return New(frontend, a, store, nil, nil, nil, nil)
 }
 
 func TestHealthEndpoint(t *testing.T) {

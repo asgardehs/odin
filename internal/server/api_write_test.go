@@ -10,7 +10,7 @@ import (
 )
 
 func TestCreateEstablishment(t *testing.T) {
-	srv := newTestServerWithDB(t)
+	tc := newTestServerWithDB(t)
 
 	body := `{
 		"name": "Acme Chemical Plant",
@@ -22,8 +22,9 @@ func TestCreateEstablishment(t *testing.T) {
 	}`
 
 	req := httptest.NewRequest("POST", "/api/establishments", bytes.NewBufferString(body))
+	tc.authRequest(req)
 	w := httptest.NewRecorder()
-	srv.mux.ServeHTTP(w, req)
+	tc.srv.mux.ServeHTTP(w, req)
 
 	if w.Code != http.StatusCreated {
 		t.Fatalf("POST /api/establishments = %d; body: %s", w.Code, w.Body.String())
@@ -39,7 +40,7 @@ func TestCreateEstablishment(t *testing.T) {
 	// Verify it shows up in the list.
 	req = httptest.NewRequest("GET", "/api/establishments", nil)
 	w = httptest.NewRecorder()
-	srv.mux.ServeHTTP(w, req)
+	tc.srv.mux.ServeHTTP(w, req)
 
 	var list struct {
 		Total int64 `json:"total"`
@@ -52,7 +53,7 @@ func TestCreateEstablishment(t *testing.T) {
 }
 
 func TestUpdateEstablishment(t *testing.T) {
-	srv := newTestServerWithDB(t)
+	tc := newTestServerWithDB(t)
 
 	body := `{
 		"name": "Test Facility UPDATED",
@@ -63,8 +64,9 @@ func TestUpdateEstablishment(t *testing.T) {
 	}`
 
 	req := httptest.NewRequest("PUT", "/api/establishments/1", bytes.NewBufferString(body))
+	tc.authRequest(req)
 	w := httptest.NewRecorder()
-	srv.mux.ServeHTTP(w, req)
+	tc.srv.mux.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("PUT = %d; body: %s", w.Code, w.Body.String())
@@ -73,7 +75,7 @@ func TestUpdateEstablishment(t *testing.T) {
 	// Verify the update.
 	req = httptest.NewRequest("GET", "/api/establishments/1", nil)
 	w = httptest.NewRecorder()
-	srv.mux.ServeHTTP(w, req)
+	tc.srv.mux.ServeHTTP(w, req)
 
 	var row map[string]any
 	json.NewDecoder(w.Body).Decode(&row)
@@ -83,7 +85,7 @@ func TestUpdateEstablishment(t *testing.T) {
 }
 
 func TestDeleteEstablishment(t *testing.T) {
-	srv := newTestServerWithDB(t)
+	tc := newTestServerWithDB(t)
 
 	// Create one to delete (don't delete the seeded one, it has FK deps).
 	createBody := `{
@@ -94,8 +96,9 @@ func TestDeleteEstablishment(t *testing.T) {
 		"zip": "66002"
 	}`
 	req := httptest.NewRequest("POST", "/api/establishments", bytes.NewBufferString(createBody))
+	tc.authRequest(req)
 	w := httptest.NewRecorder()
-	srv.mux.ServeHTTP(w, req)
+	tc.srv.mux.ServeHTTP(w, req)
 
 	var created map[string]any
 	json.NewDecoder(w.Body).Decode(&created)
@@ -103,8 +106,9 @@ func TestDeleteEstablishment(t *testing.T) {
 
 	// Delete it.
 	req = httptest.NewRequest("DELETE", "/api/establishments/"+itoa(id), nil)
+	tc.authRequest(req)
 	w = httptest.NewRecorder()
-	srv.mux.ServeHTTP(w, req)
+	tc.srv.mux.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("DELETE = %d; body: %s", w.Code, w.Body.String())
@@ -113,7 +117,7 @@ func TestDeleteEstablishment(t *testing.T) {
 	// Verify it's gone.
 	req = httptest.NewRequest("GET", "/api/establishments/"+itoa(id), nil)
 	w = httptest.NewRecorder()
-	srv.mux.ServeHTTP(w, req)
+	tc.srv.mux.ServeHTTP(w, req)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("GET after DELETE = %d, want 404", w.Code)
@@ -121,7 +125,7 @@ func TestDeleteEstablishment(t *testing.T) {
 }
 
 func TestCreateAndCloseIncident(t *testing.T) {
-	srv := newTestServerWithDB(t)
+	tc := newTestServerWithDB(t)
 
 	// Seed an employee first.
 	empBody := `{
@@ -131,8 +135,9 @@ func TestCreateAndCloseIncident(t *testing.T) {
 		"job_title": "Operator"
 	}`
 	req := httptest.NewRequest("POST", "/api/employees", bytes.NewBufferString(empBody))
+	tc.authRequest(req)
 	w := httptest.NewRecorder()
-	srv.mux.ServeHTTP(w, req)
+	tc.srv.mux.ServeHTTP(w, req)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("create employee = %d; %s", w.Code, w.Body.String())
 	}
@@ -151,8 +156,9 @@ func TestCreateAndCloseIncident(t *testing.T) {
 		"reported_by": "testuser"
 	}`
 	req = httptest.NewRequest("POST", "/api/incidents", bytes.NewBufferString(incBody))
+	tc.authRequest(req)
 	w = httptest.NewRecorder()
-	srv.mux.ServeHTTP(w, req)
+	tc.srv.mux.ServeHTTP(w, req)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("create incident = %d; %s", w.Code, w.Body.String())
 	}
@@ -163,7 +169,7 @@ func TestCreateAndCloseIncident(t *testing.T) {
 	// Verify it was created with status 'reported'.
 	req = httptest.NewRequest("GET", "/api/incidents/"+itoa(incID), nil)
 	w = httptest.NewRecorder()
-	srv.mux.ServeHTTP(w, req)
+	tc.srv.mux.ServeHTTP(w, req)
 
 	var incRow map[string]any
 	json.NewDecoder(w.Body).Decode(&incRow)
@@ -173,8 +179,9 @@ func TestCreateAndCloseIncident(t *testing.T) {
 
 	// Close it.
 	req = httptest.NewRequest("POST", "/api/incidents/"+itoa(incID)+"/close", nil)
+	tc.authRequest(req)
 	w = httptest.NewRecorder()
-	srv.mux.ServeHTTP(w, req)
+	tc.srv.mux.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Fatalf("close incident = %d; %s", w.Code, w.Body.String())
 	}
@@ -182,7 +189,7 @@ func TestCreateAndCloseIncident(t *testing.T) {
 	// Verify status changed.
 	req = httptest.NewRequest("GET", "/api/incidents/"+itoa(incID), nil)
 	w = httptest.NewRecorder()
-	srv.mux.ServeHTTP(w, req)
+	tc.srv.mux.ServeHTTP(w, req)
 
 	json.NewDecoder(w.Body).Decode(&incRow)
 	if incRow["status"] != "closed" {
@@ -194,21 +201,21 @@ func TestCreateAndCloseIncident(t *testing.T) {
 }
 
 func TestCorrectiveActionLifecycle(t *testing.T) {
-	srv := newTestServerWithDB(t)
+	tc := newTestServerWithDB(t)
 
 	// Need an investigation to FK against. Seed the chain:
 	// employee -> incident -> investigation -> corrective action
 
-	srv.repo.DB.ExecParams(
+	tc.srv.repo.DB.ExecParams(
 		`INSERT INTO employees (id, establishment_id, first_name, last_name) VALUES (?, ?, ?, ?)`,
 		1, 1, "Test", "Worker",
 	)
-	srv.repo.DB.ExecParams(
+	tc.srv.repo.DB.ExecParams(
 		`INSERT INTO incidents (id, establishment_id, employee_id, incident_date, incident_description, severity_code)
 		 VALUES (?, ?, ?, ?, ?, ?)`,
 		1, 1, 1, "2026-04-10", "Test incident", "FIRST_AID",
 	)
-	srv.repo.DB.ExecParams(
+	tc.srv.repo.DB.ExecParams(
 		`INSERT INTO incident_investigations (id, incident_id, lead_investigator, initiated_date, status)
 		 VALUES (?, ?, ?, ?, ?)`,
 		1, 1, "Test Worker", "2026-04-10", "in_progress",
@@ -223,8 +230,9 @@ func TestCorrectiveActionLifecycle(t *testing.T) {
 		"due_date": "2026-05-01"
 	}`
 	req := httptest.NewRequest("POST", "/api/corrective-actions", bytes.NewBufferString(caBody))
+	tc.authRequest(req)
 	w := httptest.NewRecorder()
-	srv.mux.ServeHTTP(w, req)
+	tc.srv.mux.ServeHTTP(w, req)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("create CA = %d; %s", w.Code, w.Body.String())
 	}
@@ -234,8 +242,9 @@ func TestCorrectiveActionLifecycle(t *testing.T) {
 
 	// Complete it.
 	req = httptest.NewRequest("POST", "/api/corrective-actions/"+itoa(caID)+"/complete", nil)
+	tc.authRequest(req)
 	w = httptest.NewRecorder()
-	srv.mux.ServeHTTP(w, req)
+	tc.srv.mux.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Fatalf("complete CA = %d; %s", w.Code, w.Body.String())
 	}
@@ -243,8 +252,9 @@ func TestCorrectiveActionLifecycle(t *testing.T) {
 	// Verify it.
 	verifyBody := `{"notes": "Splash guard installed and tested with water flow. No splashing observed."}`
 	req = httptest.NewRequest("POST", "/api/corrective-actions/"+itoa(caID)+"/verify", bytes.NewBufferString(verifyBody))
+	tc.authRequest(req)
 	w = httptest.NewRecorder()
-	srv.mux.ServeHTTP(w, req)
+	tc.srv.mux.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Fatalf("verify CA = %d; %s", w.Code, w.Body.String())
 	}
@@ -252,7 +262,7 @@ func TestCorrectiveActionLifecycle(t *testing.T) {
 	// Check final state.
 	req = httptest.NewRequest("GET", "/api/corrective-actions/"+itoa(caID), nil)
 	w = httptest.NewRecorder()
-	srv.mux.ServeHTTP(w, req)
+	tc.srv.mux.ServeHTTP(w, req)
 
 	var caRow map[string]any
 	json.NewDecoder(w.Body).Decode(&caRow)
@@ -265,7 +275,7 @@ func TestCorrectiveActionLifecycle(t *testing.T) {
 }
 
 func TestCreateChemical(t *testing.T) {
-	srv := newTestServerWithDB(t)
+	tc := newTestServerWithDB(t)
 
 	body := `{
 		"establishment_id": 1,
@@ -286,8 +296,9 @@ func TestCreateChemical(t *testing.T) {
 	}`
 
 	req := httptest.NewRequest("POST", "/api/chemicals", bytes.NewBufferString(body))
+	tc.authRequest(req)
 	w := httptest.NewRecorder()
-	srv.mux.ServeHTTP(w, req)
+	tc.srv.mux.ServeHTTP(w, req)
 
 	if w.Code != http.StatusCreated {
 		t.Fatalf("POST /api/chemicals = %d; body: %s", w.Code, w.Body.String())
@@ -300,7 +311,7 @@ func TestCreateChemical(t *testing.T) {
 	// Verify it shows up.
 	req = httptest.NewRequest("GET", "/api/chemicals/"+itoa(id), nil)
 	w = httptest.NewRecorder()
-	srv.mux.ServeHTTP(w, req)
+	tc.srv.mux.ServeHTTP(w, req)
 
 	var chem map[string]any
 	json.NewDecoder(w.Body).Decode(&chem)
@@ -314,8 +325,9 @@ func TestCreateChemical(t *testing.T) {
 	// Discontinue it.
 	discBody := `{"reason": "Switched to less hazardous alternative"}`
 	req = httptest.NewRequest("POST", "/api/chemicals/"+itoa(id)+"/discontinue", bytes.NewBufferString(discBody))
+	tc.authRequest(req)
 	w = httptest.NewRecorder()
-	srv.mux.ServeHTTP(w, req)
+	tc.srv.mux.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("discontinue = %d; %s", w.Code, w.Body.String())
@@ -324,7 +336,7 @@ func TestCreateChemical(t *testing.T) {
 	// Verify discontinued.
 	req = httptest.NewRequest("GET", "/api/chemicals/"+itoa(id), nil)
 	w = httptest.NewRecorder()
-	srv.mux.ServeHTTP(w, req)
+	tc.srv.mux.ServeHTTP(w, req)
 
 	json.NewDecoder(w.Body).Decode(&chem)
 	if chem["is_active"].(float64) != 0 {
