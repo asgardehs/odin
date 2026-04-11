@@ -7,22 +7,22 @@ const permitTable = "permits"
 
 // PermitInput is the payload for creating or updating a permit.
 type PermitInput struct {
-	EstablishmentID       int64    `json:"establishment_id"`
-	PermitTypeID          int64    `json:"permit_type_id"`
-	IssuingAgencyID       *int64   `json:"issuing_agency_id,omitempty"`
-	PermitNumber          string   `json:"permit_number"`
-	PermitName            *string  `json:"permit_name,omitempty"`
-	ApplicationDate       *string  `json:"application_date,omitempty"`
-	ApplicationNumber     *string  `json:"application_number,omitempty"`
-	IssueDate             *string  `json:"issue_date,omitempty"`
-	EffectiveDate         *string  `json:"effective_date,omitempty"`
-	ExpirationDate        *string  `json:"expiration_date,omitempty"`
-	PermitClassification  *string  `json:"permit_classification,omitempty"`
-	CoverageDescription   *string  `json:"coverage_description,omitempty"`
-	AnnualFee             *float64 `json:"annual_fee,omitempty"`
-	FeeDueDate            *string  `json:"fee_due_date,omitempty"`
-	InternalOwnerID       *int64   `json:"internal_owner_id,omitempty"`
-	Notes                 *string  `json:"notes,omitempty"`
+	EstablishmentID      int64    `json:"establishment_id"`
+	PermitTypeID         int64    `json:"permit_type_id"`
+	IssuingAgencyID      *int64   `json:"issuing_agency_id,omitempty"`
+	PermitNumber         string   `json:"permit_number"`
+	PermitName           *string  `json:"permit_name,omitempty"`
+	ApplicationDate      *string  `json:"application_date,omitempty"`
+	ApplicationNumber    *string  `json:"application_number,omitempty"`
+	IssueDate            *string  `json:"issue_date,omitempty"`
+	EffectiveDate        *string  `json:"effective_date,omitempty"`
+	ExpirationDate       *string  `json:"expiration_date,omitempty"`
+	PermitClassification *string  `json:"permit_classification,omitempty"`
+	CoverageDescription  *string  `json:"coverage_description,omitempty"`
+	AnnualFee            *float64 `json:"annual_fee,omitempty"`
+	FeeDueDate           *string  `json:"fee_due_date,omitempty"`
+	InternalOwnerID      *int64   `json:"internal_owner_id,omitempty"`
+	Notes                *string  `json:"notes,omitempty"`
 }
 
 func (r *Repo) CreatePermit(user string, in PermitInput) (int64, error) {

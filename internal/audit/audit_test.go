@@ -14,13 +14,13 @@ import (
 type mockAuth struct{ user string }
 
 func (m *mockAuth) Verify(_, _ string) error { return nil }
-func (m *mockAuth) CurrentUser() string       { return m.user }
+func (m *mockAuth) CurrentUser() string      { return m.user }
 
 // failAuth rejects all credentials.
 type failAuth struct{ user string }
 
 func (f *failAuth) Verify(_, _ string) error { return auth.ErrInvalidCredentials }
-func (f *failAuth) CurrentUser() string       { return f.user }
+func (f *failAuth) CurrentUser() string      { return f.user }
 
 func TestRecordAndHistory(t *testing.T) {
 	dir := t.TempDir()

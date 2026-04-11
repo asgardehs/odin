@@ -19,35 +19,35 @@ type ChemicalInput struct {
 	SignalWord *string `json:"signal_word,omitempty"`
 
 	// Physical hazards
-	IsFlammable       *int `json:"is_flammable,omitempty"`
-	IsOxidizer        *int `json:"is_oxidizer,omitempty"`
-	IsExplosive       *int `json:"is_explosive,omitempty"`
-	IsCorrosiveToMtl  *int `json:"is_corrosive_to_metal,omitempty"`
-	IsGasUnderPress   *int `json:"is_gas_under_pressure,omitempty"`
+	IsFlammable      *int `json:"is_flammable,omitempty"`
+	IsOxidizer       *int `json:"is_oxidizer,omitempty"`
+	IsExplosive      *int `json:"is_explosive,omitempty"`
+	IsCorrosiveToMtl *int `json:"is_corrosive_to_metal,omitempty"`
+	IsGasUnderPress  *int `json:"is_gas_under_pressure,omitempty"`
 
 	// Health hazards
-	IsAcuteToxic  *int `json:"is_acute_toxic,omitempty"`
-	IsCarcinogen  *int `json:"is_carcinogen,omitempty"`
-	IsSkinCorr    *int `json:"is_skin_corrosion,omitempty"`
-	IsEyeDamage   *int `json:"is_eye_damage,omitempty"`
-	IsRespSensit  *int `json:"is_respiratory_sensitizer,omitempty"`
+	IsAcuteToxic *int `json:"is_acute_toxic,omitempty"`
+	IsCarcinogen *int `json:"is_carcinogen,omitempty"`
+	IsSkinCorr   *int `json:"is_skin_corrosion,omitempty"`
+	IsEyeDamage  *int `json:"is_eye_damage,omitempty"`
+	IsRespSensit *int `json:"is_respiratory_sensitizer,omitempty"`
 
 	// Regulatory
-	IsEHS       *int     `json:"is_ehs,omitempty"`
-	EhsTPQ      *float64 `json:"ehs_tpq_lbs,omitempty"`
-	EhsRQ       *float64 `json:"ehs_rq_lbs,omitempty"`
-	IsSara313   *int     `json:"is_sara_313,omitempty"`
-	Sara313Cat  *string  `json:"sara_313_category,omitempty"`
-	IsPBT       *int     `json:"is_pbt,omitempty"`
+	IsEHS      *int     `json:"is_ehs,omitempty"`
+	EhsTPQ     *float64 `json:"ehs_tpq_lbs,omitempty"`
+	EhsRQ      *float64 `json:"ehs_rq_lbs,omitempty"`
+	IsSara313  *int     `json:"is_sara_313,omitempty"`
+	Sara313Cat *string  `json:"sara_313_category,omitempty"`
+	IsPBT      *int     `json:"is_pbt,omitempty"`
 
 	// Physical properties
 	PhysicalState *string  `json:"physical_state,omitempty"`
 	FlashPointF   *float64 `json:"flash_point_f,omitempty"`
 
 	// Storage
-	StorageRequirements  *string `json:"storage_requirements,omitempty"`
+	StorageRequirements   *string `json:"storage_requirements,omitempty"`
 	IncompatibleMaterials *string `json:"incompatible_materials,omitempty"`
-	PPERequired          *string `json:"ppe_required,omitempty"`
+	PPERequired           *string `json:"ppe_required,omitempty"`
 }
 
 func (r *Repo) CreateChemical(user string, in ChemicalInput) (int64, error) {

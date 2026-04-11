@@ -9,26 +9,26 @@ const correctiveActionTable = "corrective_actions"
 
 // IncidentInput is the payload for creating or updating an incident.
 type IncidentInput struct {
-	EstablishmentID         int64   `json:"establishment_id"`
-	EmployeeID              *int64  `json:"employee_id,omitempty"`
-	CaseNumber              *string `json:"case_number,omitempty"`
-	IncidentDate            string  `json:"incident_date"`
-	IncidentTime            *string `json:"incident_time,omitempty"`
-	TimeEmployeeBeganWork   *string `json:"time_employee_began_work,omitempty"`
-	LocationDescription     *string `json:"location_description,omitempty"`
-	ActivityDescription     *string `json:"activity_description,omitempty"`
-	IncidentDescription     string  `json:"incident_description"`
-	ObjectOrSubstance       *string `json:"object_or_substance,omitempty"`
-	CaseClassificationCode  *string `json:"case_classification_code,omitempty"`
-	BodyPartCode            *string `json:"body_part_code,omitempty"`
-	SeverityCode            string  `json:"severity_code"`
-	TreatmentProvided       *string `json:"treatment_provided,omitempty"`
-	TreatingPhysician       *string `json:"treating_physician,omitempty"`
-	TreatmentFacility       *string `json:"treatment_facility,omitempty"`
-	WasHospitalized         *int    `json:"was_hospitalized,omitempty"`
-	WasERVisit              *int    `json:"was_er_visit,omitempty"`
-	ReportedBy              *string `json:"reported_by,omitempty"`
-	ReportedDate            *string `json:"reported_date,omitempty"`
+	EstablishmentID        int64   `json:"establishment_id"`
+	EmployeeID             *int64  `json:"employee_id,omitempty"`
+	CaseNumber             *string `json:"case_number,omitempty"`
+	IncidentDate           string  `json:"incident_date"`
+	IncidentTime           *string `json:"incident_time,omitempty"`
+	TimeEmployeeBeganWork  *string `json:"time_employee_began_work,omitempty"`
+	LocationDescription    *string `json:"location_description,omitempty"`
+	ActivityDescription    *string `json:"activity_description,omitempty"`
+	IncidentDescription    string  `json:"incident_description"`
+	ObjectOrSubstance      *string `json:"object_or_substance,omitempty"`
+	CaseClassificationCode *string `json:"case_classification_code,omitempty"`
+	BodyPartCode           *string `json:"body_part_code,omitempty"`
+	SeverityCode           string  `json:"severity_code"`
+	TreatmentProvided      *string `json:"treatment_provided,omitempty"`
+	TreatingPhysician      *string `json:"treating_physician,omitempty"`
+	TreatmentFacility      *string `json:"treatment_facility,omitempty"`
+	WasHospitalized        *int    `json:"was_hospitalized,omitempty"`
+	WasERVisit             *int    `json:"was_er_visit,omitempty"`
+	ReportedBy             *string `json:"reported_by,omitempty"`
+	ReportedDate           *string `json:"reported_date,omitempty"`
 }
 
 func (r *Repo) CreateIncident(user string, in IncidentInput) (int64, error) {

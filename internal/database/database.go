@@ -82,14 +82,14 @@ func (db *DB) CheckFK() ([]FKViolation, error) {
 // pragmas configures the connection for a desktop EHS application.
 func (db *DB) pragmas() error {
 	pragmas := []string{
-		"PRAGMA journal_mode=WAL",          // concurrent reads during writes
-		"PRAGMA foreign_keys=ON",           // enforce referential integrity
-		"PRAGMA busy_timeout=5000",         // 5s retry on lock contention
-		"PRAGMA synchronous=NORMAL",        // safe with WAL, better perf than FULL
-		"PRAGMA cache_size=-64000",         // 64MB page cache
-		"PRAGMA temp_store=MEMORY",         // temp tables in memory
-		"PRAGMA mmap_size=268435456",       // 256MB memory-mapped I/O
-		"PRAGMA optimize",                  // run optimizer on open
+		"PRAGMA journal_mode=WAL",    // concurrent reads during writes
+		"PRAGMA foreign_keys=ON",     // enforce referential integrity
+		"PRAGMA busy_timeout=5000",   // 5s retry on lock contention
+		"PRAGMA synchronous=NORMAL",  // safe with WAL, better perf than FULL
+		"PRAGMA cache_size=-64000",   // 64MB page cache
+		"PRAGMA temp_store=MEMORY",   // temp tables in memory
+		"PRAGMA mmap_size=268435456", // 256MB memory-mapped I/O
+		"PRAGMA optimize",            // run optimizer on open
 	}
 	for _, p := range pragmas {
 		if err := db.conn.Exec(p); err != nil {

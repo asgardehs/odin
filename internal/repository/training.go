@@ -64,17 +64,17 @@ func (r *Repo) DeleteTrainingCourse(user string, id int64) error {
 
 // TrainingCompletionInput is the payload for recording a training completion.
 type TrainingCompletionInput struct {
-	EmployeeID      int64    `json:"employee_id"`
-	CourseID        int64    `json:"course_id"`
-	CompletionDate  string   `json:"completion_date"`
-	ExpirationDate  *string  `json:"expiration_date,omitempty"`
-	Score           *float64 `json:"score,omitempty"`
-	Passed          *int     `json:"passed,omitempty"`
-	Instructor      *string  `json:"instructor,omitempty"`
-	DeliveryMethod  *string  `json:"delivery_method,omitempty"`
-	Location        *string  `json:"location,omitempty"`
-	CertificateNum  *string  `json:"certificate_number,omitempty"`
-	Notes           *string  `json:"notes,omitempty"`
+	EmployeeID     int64    `json:"employee_id"`
+	CourseID       int64    `json:"course_id"`
+	CompletionDate string   `json:"completion_date"`
+	ExpirationDate *string  `json:"expiration_date,omitempty"`
+	Score          *float64 `json:"score,omitempty"`
+	Passed         *int     `json:"passed,omitempty"`
+	Instructor     *string  `json:"instructor,omitempty"`
+	DeliveryMethod *string  `json:"delivery_method,omitempty"`
+	Location       *string  `json:"location,omitempty"`
+	CertificateNum *string  `json:"certificate_number,omitempty"`
+	Notes          *string  `json:"notes,omitempty"`
 }
 
 func (r *Repo) CreateTrainingCompletion(user string, in TrainingCompletionInput) (int64, error) {

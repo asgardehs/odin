@@ -78,11 +78,11 @@ func (r *Repo) DeletePPEItem(user string, id int64) error {
 
 // PPEAssignmentInput is the payload for assigning PPE to an employee.
 type PPEAssignmentInput struct {
-	PPEItemID              int64   `json:"ppe_item_id"`
-	EmployeeID             int64   `json:"employee_id"`
-	AssignedDate           string  `json:"assigned_date"`
-	AssignedByEmployeeID   *int64  `json:"assigned_by_employee_id,omitempty"`
-	Notes                  *string `json:"notes,omitempty"`
+	PPEItemID            int64   `json:"ppe_item_id"`
+	EmployeeID           int64   `json:"employee_id"`
+	AssignedDate         string  `json:"assigned_date"`
+	AssignedByEmployeeID *int64  `json:"assigned_by_employee_id,omitempty"`
+	Notes                *string `json:"notes,omitempty"`
 }
 
 func (r *Repo) CreatePPEAssignment(user string, in PPEAssignmentInput) (int64, error) {
@@ -116,18 +116,18 @@ func (r *Repo) DeletePPEAssignment(user string, id int64) error {
 
 // PPEInspectionInput is the payload for recording a PPE inspection.
 type PPEInspectionInput struct {
-	PPEItemID              int64   `json:"ppe_item_id"`
-	InspectionDate         string  `json:"inspection_date"`
-	InspectedByEmployeeID  int64   `json:"inspected_by_employee_id"`
-	Passed                 int     `json:"passed"`
-	Condition              *string `json:"condition,omitempty"`
-	ChecklistResults       *string `json:"checklist_results,omitempty"`
-	IssuesFound            *string `json:"issues_found,omitempty"`
-	CorrectiveAction       *string `json:"corrective_action,omitempty"`
-	NextInspectionDue      *string `json:"next_inspection_due,omitempty"`
-	RemovedFromService     *int    `json:"removed_from_service,omitempty"`
-	RemovalReason          *string `json:"removal_reason,omitempty"`
-	Notes                  *string `json:"notes,omitempty"`
+	PPEItemID             int64   `json:"ppe_item_id"`
+	InspectionDate        string  `json:"inspection_date"`
+	InspectedByEmployeeID int64   `json:"inspected_by_employee_id"`
+	Passed                int     `json:"passed"`
+	Condition             *string `json:"condition,omitempty"`
+	ChecklistResults      *string `json:"checklist_results,omitempty"`
+	IssuesFound           *string `json:"issues_found,omitempty"`
+	CorrectiveAction      *string `json:"corrective_action,omitempty"`
+	NextInspectionDue     *string `json:"next_inspection_due,omitempty"`
+	RemovedFromService    *int    `json:"removed_from_service,omitempty"`
+	RemovalReason         *string `json:"removal_reason,omitempty"`
+	Notes                 *string `json:"notes,omitempty"`
 }
 
 func (r *Repo) CreatePPEInspection(user string, in PPEInspectionInput) (int64, error) {
