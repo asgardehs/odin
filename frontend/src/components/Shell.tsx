@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, Outlet } from 'react-router';
+import { NavLink, Outlet, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import logo from '../assets/OdinEHSlogo_256.png';
 
@@ -18,6 +18,7 @@ const navItems = [
 
 export default function Shell() {
   const { user, readonly, logout } = useAuth();
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -71,12 +72,21 @@ export default function Shell() {
                   {readonly ? 'Read-only' : user?.display_name ?? 'Not signed in'}
                 </span>
                 {user && (
-                  <button
-                    onClick={logout}
-                    className="text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-status-danger)] text-left cursor-pointer bg-transparent border-none p-0 transition-colors"
-                  >
-                    Sign out
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => navigate('/account')}
+                      className="text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-accent-light)] text-left cursor-pointer bg-transparent border-none p-0 transition-colors"
+                    >
+                      Account
+                    </button>
+                    <span className="text-[10px] text-[var(--color-text-muted)]">·</span>
+                    <button
+                      onClick={logout}
+                      className="text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-status-danger)] text-left cursor-pointer bg-transparent border-none p-0 transition-colors"
+                    >
+                      Sign out
+                    </button>
+                  </div>
                 )}
               </div>
             )}

@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Shell from './components/Shell';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
+import Account from './pages/Account';
 import Placeholder from './pages/Placeholder';
 
 function AppRoutes() {
@@ -34,6 +35,7 @@ function AppRoutes() {
           <Route path="permits" element={<Placeholder />} />
           <Route path="waste" element={<Placeholder />} />
           <Route path="ppe" element={<Placeholder />} />
+          <Route path="account" element={<Account />} />
         </Route>
       </Routes>
     </BrowserRouter>
