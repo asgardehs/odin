@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiFetch } from '../api';
 
 export function useApi<T>(url: string) {
   const [data, setData] = useState<T | null>(null);
@@ -7,7 +8,7 @@ export function useApi<T>(url: string) {
 
   useEffect(() => {
     setLoading(true);
-    fetch(url)
+    apiFetch(url)
       .then(res => {
         if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
         return res.json();

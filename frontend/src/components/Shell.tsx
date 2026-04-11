@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router';
+import { useAuth } from '../context/AuthContext';
+import logo from '../assets/OdinEHSlogo_256.png';
 
 const navItems = [
   { to: '/',              label: 'Dashboard',    icon: '⬡' },
@@ -15,24 +17,24 @@ const navItems = [
 ];
 
 export default function Shell() {
+  const { user, readonly, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
       <nav className={`flex flex-col ${sidebarOpen ? 'w-48' : 'w-16'} transition-all duration-200 bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] overflow-hidden`}>
-        {/* Logo + toggle */}
-        <div className="flex items-center h-14 px-4 border-b border-[var(--color-border)]">
+        {/* Sidebar toggle */}
+        <div className="flex items-center justify-center h-14 border-b border-[var(--color-border)]">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="flex items-center gap-2 bg-transparent border-none cursor-pointer"
+            className="flex items-center justify-center w-8 h-8 bg-transparent border-none cursor-pointer text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
           >
-            <img src="/favicon.svg" alt="Odin" className="w-7 h-7 shrink-0" />
-            {sidebarOpen && (
-              <span className="text-sm font-semibold text-[var(--color-accent-light)] whitespace-nowrap">
-                ODIN
-              </span>
-            )}
+            <svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="1" y1="1" x2="17" y2="1" />
+              <line x1="1" y1="7" x2="17" y2="7" />
+              <line x1="1" y1="13" x2="17" y2="13" />
+            </svg>
           </button>
         </div>
 
@@ -61,12 +63,22 @@ export default function Shell() {
         <div className="border-t border-[var(--color-border)] p-3">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-full bg-[var(--color-accent-muted)] flex items-center justify-center text-xs font-bold text-[var(--color-accent-light)] shrink-0">
-              A
+              {readonly ? '👁' : user?.display_name?.charAt(0).toUpperCase() ?? '?'}
             </div>
             {sidebarOpen && (
-              <span className="text-xs text-[var(--color-text-secondary)] whitespace-nowrap">
-                adam
-              </span>
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs text-[var(--color-text-secondary)] whitespace-nowrap truncate">
+                  {readonly ? 'Read-only' : user?.display_name ?? 'Not signed in'}
+                </span>
+                {user && (
+                  <button
+                    onClick={logout}
+                    className="text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-status-danger)] text-left cursor-pointer bg-transparent border-none p-0 transition-colors"
+                  >
+                    Sign out
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -77,8 +89,8 @@ export default function Shell() {
         {/* Top bar */}
         <header className="sticky top-0 z-10 flex items-center h-14 px-6 bg-[var(--color-bg-secondary)]/80 backdrop-blur-sm border-b border-[var(--color-border)]">
           <div className="flex-1" />
-          <div className="flex items-center gap-4 text-[var(--color-text-secondary)] text-base mr-[25px]">
-            <span>Odin EHS</span>
+          <div className="flex items-center mr-[25px]">
+            <img src={logo} alt="Odin EHS" className="h-9" />
           </div>
         </header>
 

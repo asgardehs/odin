@@ -1,9 +1,25 @@
 import { BrowserRouter, Routes, Route } from 'react-router';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import Shell from './components/Shell';
 import Dashboard from './pages/Dashboard';
+import Login from './pages/Login';
 import Placeholder from './pages/Placeholder';
 
-export default function App() {
+function AppRoutes() {
+  const { user, readonly, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-[var(--color-bg-primary)]">
+        <span className="text-[var(--color-text-muted)] text-sm">Loading...</span>
+      </div>
+    );
+  }
+
+  if (!user && !readonly) {
+    return <Login />;
+  }
+
   return (
     <BrowserRouter>
       <Routes>
@@ -21,5 +37,13 @@ export default function App() {
         </Route>
       </Routes>
     </BrowserRouter>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
   );
 }
