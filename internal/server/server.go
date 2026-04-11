@@ -40,12 +40,15 @@ func (s *Server) ListenAndServe(addr string) error {
 
 // routes registers all HTTP routes.
 func (s *Server) routes() {
-	// API routes.
+	// System routes.
 	s.mux.HandleFunc("GET /api/health", s.handleHealth)
 	s.mux.HandleFunc("POST /api/auth/verify", s.handleAuthVerify)
 	s.mux.HandleFunc("GET /api/auth/whoami", s.handleWhoAmI)
 	s.mux.HandleFunc("GET /api/audit/{module}/{entityID}", s.handleAuditHistory)
 	s.mux.HandleFunc("POST /api/audit/export", s.handleAuditExport)
+
+	// Data API routes (requires database).
+	s.apiRoutes()
 
 	// Frontend: serve embedded SPA. Non-file paths fall back to index.html
 	// so React Router can handle client-side routes.
