@@ -108,9 +108,13 @@ func (db *DB) ExecParams(sql string, args ...any) error {
 }
 
 // bindArgs binds parameters to a prepared statement by position.
+// Supports pointer types (*string, *int, *int64, *float64) — nil pointers
+// bind as NULL, non-nil pointers dereference to their underlying type.
 func bindArgs(stmt *sqlite3.Stmt, args []any) error {
 	for i, arg := range args {
 		pos := i + 1 // sqlite params are 1-indexed
+		// Dereference pointer types to their values, or nil.
+		arg = derefPtr(arg)
 		switch v := arg.(type) {
 		case nil:
 			if err := stmt.BindNull(pos); err != nil {
@@ -145,6 +149,40 @@ func bindArgs(stmt *sqlite3.Stmt, args []any) error {
 		}
 	}
 	return nil
+}
+
+// derefPtr unwraps pointer types to their underlying value, or nil
+// if the pointer is nil. This lets repository code pass *string, *int,
+// *int64, *float64 directly as bind args.
+func derefPtr(v any) any {
+	switch p := v.(type) {
+	case *string:
+		if p == nil {
+			return nil
+		}
+		return *p
+	case *int:
+		if p == nil {
+			return nil
+		}
+		return *p
+	case *int64:
+		if p == nil {
+			return nil
+		}
+		return *p
+	case *float64:
+		if p == nil {
+			return nil
+		}
+		return *p
+	case *bool:
+		if p == nil {
+			return nil
+		}
+		return *p
+	}
+	return v
 }
 
 // columnNames returns the names of all columns in the result set.

@@ -9,6 +9,7 @@ import (
 	"github.com/asgardehs/odin/internal/audit"
 	"github.com/asgardehs/odin/internal/auth"
 	"github.com/asgardehs/odin/internal/database"
+	"github.com/asgardehs/odin/internal/repository"
 )
 
 // Server is the Odin HTTP server.
@@ -18,16 +19,22 @@ type Server struct {
 	audit    *audit.Store
 	auth     auth.Authenticator
 	db       *database.DB
+	repo     *repository.Repo
 }
 
 // New creates a server that serves the embedded frontend and API routes.
 func New(frontend fs.FS, authenticator auth.Authenticator, auditStore *audit.Store, db *database.DB) *Server {
+	var repo *repository.Repo
+	if db != nil && auditStore != nil {
+		repo = &repository.Repo{DB: db, Audit: auditStore}
+	}
 	s := &Server{
 		mux:      http.NewServeMux(),
 		frontend: frontend,
 		audit:    auditStore,
 		auth:     authenticator,
 		db:       db,
+		repo:     repo,
 	}
 	s.routes()
 	return s
@@ -49,6 +56,7 @@ func (s *Server) routes() {
 
 	// Data API routes (requires database).
 	s.apiRoutes()
+	s.writeRoutes()
 
 	// Frontend: serve embedded SPA. Non-file paths fall back to index.html
 	// so React Router can handle client-side routes.
