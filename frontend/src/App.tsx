@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, useNavigate } from 'react-router';
+import { BrowserRouter, Routes, Route } from 'react-router';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Shell from './components/Shell';
 import Dashboard from './pages/Dashboard';
@@ -17,25 +17,12 @@ import TrainingDetail from './pages/modules/TrainingDetail';
 import InspectionList from './pages/modules/InspectionList';
 import InspectionDetail from './pages/modules/InspectionDetail';
 import PermitList from './pages/modules/PermitList';
+import PermitDetail from './pages/modules/PermitDetail';
 import WasteList from './pages/modules/WasteList';
+import WasteDetail from './pages/modules/WasteDetail';
 import PPEList from './pages/modules/PPEList';
+import PPEDetail from './pages/modules/PPEDetail';
 
-/** Temporary stub rendered for /:module/:id routes until detail pages are built (Tasks 6-8). */
-function DetailStub() {
-  const navigate = useNavigate();
-  return (
-    <div className="flex flex-col items-center justify-center gap-4 p-12 text-[var(--color-text-muted)]">
-      <span className="text-3xl">⬡</span>
-      <p className="text-sm">Detail view loading…</p>
-      <button
-        onClick={() => navigate(-1)}
-        className="text-xs text-[var(--color-accent-light)] hover:underline"
-      >
-        ← Back
-      </button>
-    </div>
-  );
-}
 
 function AppRoutes() {
   const { user, readonly, loading } = useAuth();
@@ -77,13 +64,13 @@ function AppRoutes() {
           <Route path="inspections/:id" element={<InspectionDetail />} />
 
           <Route path="permits" element={<PermitList />} />
-          <Route path="permits/:id" element={<DetailStub />} />
+          <Route path="permits/:id" element={<PermitDetail />} />
 
           <Route path="waste" element={<WasteList />} />
-          <Route path="waste/:id" element={<DetailStub />} />
+          <Route path="waste/:id" element={<WasteDetail />} />
 
           <Route path="ppe" element={<PPEList />} />
-          <Route path="ppe/:id" element={<DetailStub />} />
+          <Route path="ppe/:id" element={<PPEDetail />} />
 
           <Route path="account" element={<Account />} />
         </Route>
