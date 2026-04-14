@@ -5,8 +5,11 @@ import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Account from './pages/Account';
 import EstablishmentList from './pages/modules/EstablishmentList';
+import EstablishmentDetail from './pages/modules/EstablishmentDetail';
 import EmployeeList from './pages/modules/EmployeeList';
+import EmployeeDetail from './pages/modules/EmployeeDetail';
 import IncidentList from './pages/modules/IncidentList';
+import IncidentDetail from './pages/modules/IncidentDetail';
 import ChemicalList from './pages/modules/ChemicalList';
 import TrainingList from './pages/modules/TrainingList';
 import InspectionList from './pages/modules/InspectionList';
@@ -53,13 +56,13 @@ function AppRoutes() {
           <Route index element={<Dashboard />} />
 
           <Route path="establishments" element={<EstablishmentList />} />
-          <Route path="establishments/:id" element={<DetailStub />} />
+          <Route path="establishments/:id" element={<EstablishmentDetail />} />
 
           <Route path="employees" element={<EmployeeList />} />
-          <Route path="employees/:id" element={<DetailStub />} />
+          <Route path="employees/:id" element={<EmployeeDetail />} />
 
           <Route path="incidents" element={<IncidentList />} />
-          <Route path="incidents/:id" element={<DetailStub />} />
+          <Route path="incidents/:id" element={<IncidentDetail />} />
 
           <Route path="chemicals" element={<ChemicalList />} />
           <Route path="chemicals/:id" element={<DetailStub />} />
