@@ -1,0 +1,32 @@
+import { useNavigate } from 'react-router';
+import { type ColumnDef } from '@tanstack/react-table';
+import { DataTable, type Row } from '../../components/DataTable';
+
+const columns: ColumnDef<Row>[] = [
+  { accessorKey: 'inspection_number', header: 'Inspection #' },
+  { accessorKey: 'inspection_date', header: 'Date', cell: ({ getValue }) => String(getValue() ?? '—') },
+  {
+    accessorKey: 'status',
+    header: 'Status',
+    cell: ({ getValue }) => (
+      <span className="capitalize text-[var(--color-text-secondary)] text-xs">
+        {String(getValue() ?? '—')}
+      </span>
+    ),
+  },
+  { accessorKey: 'overall_result', header: 'Result', cell: ({ getValue }) => String(getValue() ?? '—') },
+];
+
+export default function InspectionList() {
+  const navigate = useNavigate();
+  return (
+    <div>
+      <h1 className="text-2xl font-bold text-[var(--color-text-primary)] mb-6">Inspections</h1>
+      <DataTable
+        columns={columns}
+        apiUrl="/api/inspections"
+        onRowClick={(row) => navigate(`/inspections/${row.id}`)}
+      />
+    </div>
+  );
+}

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"io/fs"
 	"net/http"
@@ -14,15 +15,17 @@ import (
 
 // Server is the Odin HTTP server.
 type Server struct {
-	mux      *http.ServeMux
-	frontend fs.FS
-	audit    *audit.Store
-	auth     auth.Authenticator
-	db       *database.DB
-	repo     *repository.Repo
-	users    *auth.UserStore
-	sessions *auth.SessionStore
-	recovery *auth.RecoveryStore
+	mux             *http.ServeMux
+	frontend        fs.FS
+	audit           *audit.Store
+	auth            auth.Authenticator
+	db              *database.DB
+	repo            *repository.Repo
+	users           *auth.UserStore
+	sessions        *auth.SessionStore
+	recovery        *auth.RecoveryStore
+	limiter         *RateLimiter
+	stopLimiter     context.CancelFunc
 }
 
 // New creates a server that serves the embedded frontend and API routes.
@@ -41,9 +44,23 @@ func New(frontend fs.FS, authenticator auth.Authenticator, auditStore *audit.Sto
 		users:    users,
 		sessions: sessions,
 		recovery: recovery,
+		// 5 tokens, 1 token earned per 12 seconds (≈5 attempts/minute).
+		limiter: NewRateLimiter(5, 12*time.Second),
 	}
+	// Start the rate-limiter stale-bucket cleanup with a cancellable context
+	// so it can be stopped cleanly (tests, graceful shutdown).
+	limiterCtx, limiterCancel := context.WithCancel(context.Background())
+	s.stopLimiter = limiterCancel
+	go s.limiter.startCleanupLoop(limiterCtx)
 	s.routes()
 	return s
+}
+
+// Shutdown stops background goroutines started by New. Safe to call multiple times.
+func (s *Server) Shutdown() {
+	if s.stopLimiter != nil {
+		s.stopLimiter()
+	}
 }
 
 // ListenAndServe starts the HTTP server.
@@ -61,7 +78,9 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /api/audit/export", s.handleAuditExport)
 
 	// Application auth routes.
-	s.mux.HandleFunc("POST /api/auth/login", s.handleLogin)
+	// Login, reset-password, and recover are rate-limited (per-IP token bucket)
+	// to prevent brute-force attacks.
+	s.mux.HandleFunc("POST /api/auth/login", s.rateLimited(s.handleLogin))
 	s.mux.HandleFunc("POST /api/auth/logout", s.handleLogout)
 	s.mux.HandleFunc("POST /api/auth/setup", s.handleSetup)
 	s.mux.HandleFunc("GET /api/auth/me", s.handleMe)
@@ -69,11 +88,11 @@ func (s *Server) routes() {
 	// Self-service password reset via security questions.
 	s.mux.HandleFunc("POST /api/auth/security-questions", s.handleSetSecurityQuestions)
 	s.mux.HandleFunc("GET /api/auth/security-questions/{username}", s.handleGetSecurityQuestions)
-	s.mux.HandleFunc("POST /api/auth/reset-password", s.handleResetPassword)
+	s.mux.HandleFunc("POST /api/auth/reset-password", s.rateLimited(s.handleResetPassword))
 
 	// Disaster recovery — recovery key generated at setup, used to
 	// regain admin access when all passwords are lost.
-	s.mux.HandleFunc("POST /api/auth/recover", s.handleRecover)
+	s.mux.HandleFunc("POST /api/auth/recover", s.rateLimited(s.handleRecover))
 	s.mux.HandleFunc("POST /api/auth/regenerate-recovery-key", s.handleRegenerateRecoveryKey)
 
 	// User management routes (admin only).
