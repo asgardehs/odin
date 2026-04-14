@@ -508,6 +508,23 @@ Type: Feature
 
 - `cd frontend && npm run build`
 
+## E2E Results
+
+| Scenario | Priority | Result | Fix Attempts | Notes |
+|----------|----------|--------|--------------|-------|
+| TS-001 | Critical | PASS | 0 | Training list rendered with Code/Name/Duration/Delivery columns, pagination controls present |
+| TS-002 | Critical | PASS | 0 | Clicked row navigated to `/training/12`, detail page showed course sections, back button returned to list |
+| TS-003 | High | PASS | 0 | Incidents page shows "□ No records found" with 0 total, column headers still visible |
+| TS-004 | High | PASS | 0 | Verified via API: attempts 1–5 return 401, attempt 6 returns 429 with Retry-After header |
+| TS-005 | High | DEFERRED | — | Requires >50 records; test DB only has 13 training courses. Pagination controls render but can't test page navigation |
+
+## Not Verified
+
+| Not Verified | Reason |
+|-------------|--------|
+| TS-005 pagination navigation | No module has >50 seeded records in test environment |
+| Session cleanup fires every 15min | Time-based — verified by unit tests and code inspection only |
+
 ## Open Questions
 
 None — all design decisions resolved.
