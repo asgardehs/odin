@@ -20,11 +20,11 @@ func TestRateLimiter_Allow5Block6(t *testing.T) {
 	ip := "192.0.2.1"
 
 	for i := range 5 {
-		if !rl.Allow(ip) {
+		if allowed, _ := rl.Allow(ip); !allowed {
 			t.Errorf("request %d should be allowed (have tokens), but was blocked", i+1)
 		}
 	}
-	if rl.Allow(ip) {
+	if allowed, _ := rl.Allow(ip); allowed {
 		t.Error("request 6 should be blocked (no tokens), but was allowed")
 	}
 }
@@ -35,17 +35,17 @@ func TestRateLimiter_RefillAfterDelay(t *testing.T) {
 	rl := newTestLimiter(2, 20*time.Millisecond)
 	ip := "192.0.2.2"
 
-	// Exhaust all tokens.
-	rl.Allow(ip)
-	rl.Allow(ip)
-	if rl.Allow(ip) {
+	// Exhaust all tokens (discard return values).
+	rl.Allow(ip) //nolint:errcheck
+	rl.Allow(ip) //nolint:errcheck
+	if allowed, _ := rl.Allow(ip); allowed {
 		t.Fatal("should be blocked after exhausting tokens")
 	}
 
 	// Wait for at least 1 token to refill.
 	time.Sleep(30 * time.Millisecond)
 
-	if !rl.Allow(ip) {
+	if allowed, _ := rl.Allow(ip); !allowed {
 		t.Error("should be allowed after token refill")
 	}
 }
@@ -57,15 +57,15 @@ func TestRateLimiter_PerIP(t *testing.T) {
 	ipB := "192.0.2.20"
 
 	// Exhaust ipA's bucket.
-	if !rl.Allow(ipA) {
+	if allowed, _ := rl.Allow(ipA); !allowed {
 		t.Fatal("ipA first request should be allowed")
 	}
-	if rl.Allow(ipA) {
+	if allowed, _ := rl.Allow(ipA); allowed {
 		t.Error("ipA second request should be blocked")
 	}
 
 	// ipB should still be unaffected.
-	if !rl.Allow(ipB) {
+	if allowed, _ := rl.Allow(ipB); !allowed {
 		t.Error("ipB should be allowed (independent bucket)")
 	}
 }

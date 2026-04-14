@@ -40,8 +40,11 @@ func NewRateLimiter(maxTokens int, refillInterval time.Duration) *RateLimiter {
 	return rl
 }
 
-// Allow consumes one token for ip. Returns true if the request is permitted.
-func (rl *RateLimiter) Allow(ip string) bool {
+// Allow consumes one token for ip. Returns (true, 0) if the request is
+// permitted, or (false, retryAfter) with the wait duration if rate-limited.
+// Both the allow decision and the retry-after computation are made under a
+// single lock to avoid a TOCTOU race between two separate acquisitions.
+func (rl *RateLimiter) Allow(ip string) (bool, time.Duration) {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 
@@ -61,26 +64,18 @@ func (rl *RateLimiter) Allow(ip string) bool {
 
 	if b.tokens >= 1.0 {
 		b.tokens -= 1.0
-		return true
+		return true, 0
 	}
-	return false
-}
 
-// retryAfter returns how long until the IP has a token again.
-func (rl *RateLimiter) retryAfter(ip string) time.Duration {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-
-	b := rl.buckets[ip]
-	if b == nil || rl.refillPerSec == 0 {
-		return time.Second // fallback
+	// Compute retry-after while the lock is still held.
+	var retryAfter time.Duration
+	if rl.refillPerSec > 0 {
+		needed := 1.0 - b.tokens
+		retryAfter = time.Duration(needed / rl.refillPerSec * float64(time.Second))
+	} else {
+		retryAfter = time.Second
 	}
-	needed := 1.0 - b.tokens
-	if needed <= 0 {
-		return 0
-	}
-	secs := needed / rl.refillPerSec
-	return time.Duration(secs * float64(time.Second))
+	return false, retryAfter
 }
 
 // cleanStale removes buckets that haven't been seen recently.
@@ -115,8 +110,7 @@ func (rl *RateLimiter) startCleanupLoop(ctx context.Context) {
 func (s *Server) rateLimited(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ip := extractClientIP(r.RemoteAddr)
-		if !s.limiter.Allow(ip) {
-			retryAfter := s.limiter.retryAfter(ip)
+		if allowed, retryAfter := s.limiter.Allow(ip); !allowed {
 			w.Header().Set("Retry-After", fmt.Sprintf("%.0f", retryAfter.Seconds()))
 			writeError(w, "too many requests — try again later", http.StatusTooManyRequests)
 			return

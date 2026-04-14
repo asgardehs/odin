@@ -15,16 +15,17 @@ import (
 
 // Server is the Odin HTTP server.
 type Server struct {
-	mux      *http.ServeMux
-	frontend fs.FS
-	audit    *audit.Store
-	auth     auth.Authenticator
-	db       *database.DB
-	repo     *repository.Repo
-	users    *auth.UserStore
-	sessions *auth.SessionStore
-	recovery *auth.RecoveryStore
-	limiter  *RateLimiter
+	mux             *http.ServeMux
+	frontend        fs.FS
+	audit           *audit.Store
+	auth            auth.Authenticator
+	db              *database.DB
+	repo            *repository.Repo
+	users           *auth.UserStore
+	sessions        *auth.SessionStore
+	recovery        *auth.RecoveryStore
+	limiter         *RateLimiter
+	stopLimiter     context.CancelFunc
 }
 
 // New creates a server that serves the embedded frontend and API routes.
@@ -46,10 +47,20 @@ func New(frontend fs.FS, authenticator auth.Authenticator, auditStore *audit.Sto
 		// 5 tokens, 1 token earned per 12 seconds (≈5 attempts/minute).
 		limiter: NewRateLimiter(5, 12*time.Second),
 	}
-	// Evict stale rate-limit buckets in the background for the process lifetime.
-	go s.limiter.startCleanupLoop(context.Background())
+	// Start the rate-limiter stale-bucket cleanup with a cancellable context
+	// so it can be stopped cleanly (tests, graceful shutdown).
+	limiterCtx, limiterCancel := context.WithCancel(context.Background())
+	s.stopLimiter = limiterCancel
+	go s.limiter.startCleanupLoop(limiterCtx)
 	s.routes()
 	return s
+}
+
+// Shutdown stops background goroutines started by New. Safe to call multiple times.
+func (s *Server) Shutdown() {
+	if s.stopLimiter != nil {
+		s.stopLimiter()
+	}
 }
 
 // ListenAndServe starts the HTTP server.

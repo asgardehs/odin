@@ -74,6 +74,7 @@ export default function PPEDetail() {
           <Field label="Model" value={data.model} />
           <Field label="Size" value={data.size} />
           <Field label="Status" value={data.status} />
+          <Field label="Assigned To" value={data.current_assignee} />
         </Section>
 
         <Section title="Dates">

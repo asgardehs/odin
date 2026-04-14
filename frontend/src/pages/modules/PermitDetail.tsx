@@ -82,6 +82,7 @@ export default function PermitDetail() {
         <Section title="Permit Details">
           <Field label="Permit Number" value={data.permit_number} />
           <Field label="Permit Name" value={data.permit_name} />
+          <Field label="Issuing Agency" value={data.issuing_agency} />
           <Field label="Status" value={data.status} />
         </Section>
 

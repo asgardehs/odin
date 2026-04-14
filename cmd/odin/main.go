@@ -108,6 +108,7 @@ func main() {
 
 	<-stop
 	fmt.Println("\nShutting down.")
+	srv.Shutdown()
 }
 
 // openBrowser launches the user's default browser.
