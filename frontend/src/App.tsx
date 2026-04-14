@@ -11,8 +11,11 @@ import EmployeeDetail from './pages/modules/EmployeeDetail';
 import IncidentList from './pages/modules/IncidentList';
 import IncidentDetail from './pages/modules/IncidentDetail';
 import ChemicalList from './pages/modules/ChemicalList';
+import ChemicalDetail from './pages/modules/ChemicalDetail';
 import TrainingList from './pages/modules/TrainingList';
+import TrainingDetail from './pages/modules/TrainingDetail';
 import InspectionList from './pages/modules/InspectionList';
+import InspectionDetail from './pages/modules/InspectionDetail';
 import PermitList from './pages/modules/PermitList';
 import WasteList from './pages/modules/WasteList';
 import PPEList from './pages/modules/PPEList';
@@ -65,13 +68,13 @@ function AppRoutes() {
           <Route path="incidents/:id" element={<IncidentDetail />} />
 
           <Route path="chemicals" element={<ChemicalList />} />
-          <Route path="chemicals/:id" element={<DetailStub />} />
+          <Route path="chemicals/:id" element={<ChemicalDetail />} />
 
           <Route path="training" element={<TrainingList />} />
-          <Route path="training/:id" element={<DetailStub />} />
+          <Route path="training/:id" element={<TrainingDetail />} />
 
           <Route path="inspections" element={<InspectionList />} />
-          <Route path="inspections/:id" element={<DetailStub />} />
+          <Route path="inspections/:id" element={<InspectionDetail />} />
 
           <Route path="permits" element={<PermitList />} />
           <Route path="permits/:id" element={<DetailStub />} />
