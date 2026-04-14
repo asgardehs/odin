@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 	"log"
@@ -78,8 +79,15 @@ func main() {
 	// Set up application-level user and session stores.
 	userStore := auth.NewUserStore(db)
 	sessionStore := auth.NewSessionStore(db, 24*time.Hour)
-	sessionStore.CleanExpired()
 	recoveryStore := auth.NewRecoveryStore(db)
+
+	// Background context for long-lived goroutines; cancelled on shutdown.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Periodic session cleanup — removes expired sessions every 15 minutes.
+	// Also runs once immediately on startup.
+	go sessionStore.StartCleanupLoop(ctx, 15*time.Minute)
 
 	addr := "odin.localhost:8080"
 	srv := server.New(dist, authenticator, auditStore, db, userStore, sessionStore, recoveryStore)

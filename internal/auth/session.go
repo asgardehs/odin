@@ -1,9 +1,11 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/asgardehs/odin/internal/database"
@@ -102,6 +104,28 @@ func (s *SessionStore) DeleteForUser(userID int64) error {
 func (s *SessionStore) CleanExpired() error {
 	now := time.Now().UTC().Format(time.DateTime)
 	return s.db.ExecParams(`DELETE FROM app_sessions WHERE expires_at <= ?`, now)
+}
+
+// StartCleanupLoop runs CleanExpired on every tick until ctx is cancelled.
+// Call this once at startup in a goroutine:
+//
+//	go sessionStore.StartCleanupLoop(ctx, 15*time.Minute)
+func (s *SessionStore) StartCleanupLoop(ctx context.Context, interval time.Duration) {
+	if err := s.CleanExpired(); err != nil {
+		log.Printf("session cleanup: %v", err)
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if err := s.CleanExpired(); err != nil {
+				log.Printf("session cleanup: %v", err)
+			}
+		}
+	}
 }
 
 // generateToken produces a cryptographically random 32-byte hex token.
