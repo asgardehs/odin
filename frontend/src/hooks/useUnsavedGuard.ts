@@ -1,13 +1,15 @@
 import { useEffect } from 'react';
-import { useBlocker } from 'react-router';
 
 /**
- * Warn the user before they navigate away while a form is dirty.
+ * Warn the user before they close the tab or navigate away (hard
+ * navigation) while a form is dirty.
  *
- * Hooks into both the browser's beforeunload event (tab close / hard
- * navigation) and react-router's useBlocker (in-app navigation).
+ * In-app route changes are not blocked here — that requires migrating
+ * the app to react-router's data router (createBrowserRouter) so
+ * useBlocker becomes available. For now this only covers the browser
+ * beforeunload path, which is the more common loss-of-work scenario.
  */
-export function useUnsavedGuard(dirty: boolean, message = 'You have unsaved changes. Leave anyway?') {
+export function useUnsavedGuard(dirty: boolean) {
   useEffect(() => {
     if (!dirty) return;
     const handler = (e: BeforeUnloadEvent) => {
@@ -17,18 +19,4 @@ export function useUnsavedGuard(dirty: boolean, message = 'You have unsaved chan
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
   }, [dirty]);
-
-  const blocker = useBlocker(({ currentLocation, nextLocation }) =>
-    dirty && currentLocation.pathname !== nextLocation.pathname
-  );
-
-  useEffect(() => {
-    if (blocker.state === 'blocked') {
-      if (window.confirm(message)) {
-        blocker.proceed();
-      } else {
-        blocker.reset();
-      }
-    }
-  }, [blocker, message]);
 }

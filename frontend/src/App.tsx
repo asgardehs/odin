@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Account from './pages/Account';
 import EstablishmentList from './pages/modules/EstablishmentList';
 import EstablishmentDetail from './pages/modules/EstablishmentDetail';
+import EstablishmentForm from './pages/modules/EstablishmentForm';
 import EmployeeList from './pages/modules/EmployeeList';
 import EmployeeDetail from './pages/modules/EmployeeDetail';
 import IncidentList from './pages/modules/IncidentList';
@@ -46,7 +47,9 @@ function AppRoutes() {
           <Route index element={<Dashboard />} />
 
           <Route path="establishments" element={<EstablishmentList />} />
+          <Route path="establishments/new" element={<EstablishmentForm />} />
           <Route path="establishments/:id" element={<EstablishmentDetail />} />
+          <Route path="establishments/:id/edit" element={<EstablishmentForm />} />
 
           <Route path="employees" element={<EmployeeList />} />
           <Route path="employees/:id" element={<EmployeeDetail />} />

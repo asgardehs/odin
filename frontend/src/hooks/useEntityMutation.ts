@@ -11,13 +11,18 @@ interface MutationState {
 /**
  * Wrapper around api.post/put/del that tracks loading + error state.
  *
- * Returns {mutate, loading, error, reset}. Throws ApiError on failure
- * so the caller can branch on .status.
+ * Returns {mutate, loading, error, reset}. The mutate function is
+ * generic per call so different endpoints can return different types.
+ * Throws ApiError on failure so the caller can branch on .status.
  */
-export function useEntityMutation<TResult = unknown>() {
+export function useEntityMutation() {
   const [state, setState] = useState<MutationState>({ loading: false, error: null });
 
-  const mutate = useCallback(async (method: Method, url: string, body?: unknown): Promise<TResult> => {
+  const mutate = useCallback(async <TResult = unknown>(
+    method: Method,
+    url: string,
+    body?: unknown,
+  ): Promise<TResult> => {
     setState({ loading: true, error: null });
     try {
       let result: unknown;
