@@ -62,6 +62,15 @@ func (r *Repo) DeactivateEmployee(user string, id int64) error {
 	)
 }
 
+func (r *Repo) ReactivateEmployee(user string, id int64) error {
+	return r.updateAndAudit(employeeTable, employeeModule, id, user,
+		fmt.Sprintf("Reactivated employee %d", id),
+		`UPDATE employees SET is_active = 1, termination_date = NULL,
+		        updated_at = datetime('now')
+		 WHERE id = ?`, id,
+	)
+}
+
 func (r *Repo) DeleteEmployee(user string, id int64) error {
 	return r.deleteAndAudit(employeeTable, employeeModule, id, user,
 		fmt.Sprintf("Deleted employee %d", id),

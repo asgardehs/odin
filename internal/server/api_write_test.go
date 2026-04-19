@@ -350,3 +350,200 @@ func TestCreateChemical(t *testing.T) {
 func itoa(i int) string {
 	return strconv.Itoa(i)
 }
+
+// --- Reactivate endpoints ---
+
+// postAction is a tiny helper: POST /api/path/{id}/action, expect 200.
+func postAction(t *testing.T, tc *testContext, path string) {
+	t.Helper()
+	req := httptest.NewRequest("POST", path, nil)
+	tc.authRequest(req)
+	w := httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("%s = %d; %s", path, w.Code, w.Body.String())
+	}
+}
+
+// fetchRow GETs /api/path/{id} and decodes into a map.
+func fetchRow(t *testing.T, tc *testContext, path string) map[string]any {
+	t.Helper()
+	req := httptest.NewRequest("GET", path, nil)
+	tc.authRequest(req)
+	w := httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET %s = %d; %s", path, w.Code, w.Body.String())
+	}
+	var row map[string]any
+	json.NewDecoder(w.Body).Decode(&row)
+	return row
+}
+
+func TestEstablishmentDeactivateReactivate(t *testing.T) {
+	tc := newTestServerWithDB(t)
+
+	// Create one (don't touch seeded id=1 — has FK deps).
+	createBody := `{
+		"name": "Secondary Site",
+		"street_address": "2 Lane",
+		"city": "Topeka",
+		"state": "KS",
+		"zip": "66603"
+	}`
+	req := httptest.NewRequest("POST", "/api/establishments", bytes.NewBufferString(createBody))
+	tc.authRequest(req)
+	w := httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+	var created map[string]any
+	json.NewDecoder(w.Body).Decode(&created)
+	id := int(created["id"].(float64))
+
+	postAction(t, tc, "/api/establishments/"+itoa(id)+"/deactivate")
+	if row := fetchRow(t, tc, "/api/establishments/"+itoa(id)); row["is_active"].(float64) != 0 {
+		t.Errorf("after deactivate is_active = %v, want 0", row["is_active"])
+	}
+
+	postAction(t, tc, "/api/establishments/"+itoa(id)+"/reactivate")
+	if row := fetchRow(t, tc, "/api/establishments/"+itoa(id)); row["is_active"].(float64) != 1 {
+		t.Errorf("after reactivate is_active = %v, want 1", row["is_active"])
+	}
+}
+
+func TestEmployeeDeactivateReactivate(t *testing.T) {
+	tc := newTestServerWithDB(t)
+
+	empBody := `{"establishment_id": 1, "first_name": "Ada", "last_name": "Lovelace"}`
+	req := httptest.NewRequest("POST", "/api/employees", bytes.NewBufferString(empBody))
+	tc.authRequest(req)
+	w := httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+	var created map[string]any
+	json.NewDecoder(w.Body).Decode(&created)
+	id := int(created["id"].(float64))
+
+	postAction(t, tc, "/api/employees/"+itoa(id)+"/deactivate")
+	row := fetchRow(t, tc, "/api/employees/"+itoa(id))
+	if row["is_active"].(float64) != 0 {
+		t.Errorf("after deactivate is_active = %v, want 0", row["is_active"])
+	}
+	if row["termination_date"] == nil {
+		t.Errorf("expected termination_date to be set after deactivate")
+	}
+
+	postAction(t, tc, "/api/employees/"+itoa(id)+"/reactivate")
+	row = fetchRow(t, tc, "/api/employees/"+itoa(id))
+	if row["is_active"].(float64) != 1 {
+		t.Errorf("after reactivate is_active = %v, want 1", row["is_active"])
+	}
+	if row["termination_date"] != nil {
+		t.Errorf("expected termination_date cleared after reactivate, got %v", row["termination_date"])
+	}
+}
+
+func TestWasteStreamDeactivateReactivate(t *testing.T) {
+	tc := newTestServerWithDB(t)
+
+	wsBody := `{
+		"establishment_id": 1,
+		"stream_code": "WS-001",
+		"stream_name": "Spent acid",
+		"waste_category": "hazardous"
+	}`
+	req := httptest.NewRequest("POST", "/api/waste-streams", bytes.NewBufferString(wsBody))
+	tc.authRequest(req)
+	w := httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create waste stream = %d; %s", w.Code, w.Body.String())
+	}
+	var created map[string]any
+	json.NewDecoder(w.Body).Decode(&created)
+	id := int(created["id"].(float64))
+
+	postAction(t, tc, "/api/waste-streams/"+itoa(id)+"/deactivate")
+	if row := fetchRow(t, tc, "/api/waste-streams/"+itoa(id)); row["is_active"].(float64) != 0 {
+		t.Errorf("after deactivate is_active = %v, want 0", row["is_active"])
+	}
+
+	postAction(t, tc, "/api/waste-streams/"+itoa(id)+"/reactivate")
+	if row := fetchRow(t, tc, "/api/waste-streams/"+itoa(id)); row["is_active"].(float64) != 1 {
+		t.Errorf("after reactivate is_active = %v, want 1", row["is_active"])
+	}
+}
+
+func TestChemicalDiscontinueReactivate(t *testing.T) {
+	tc := newTestServerWithDB(t)
+
+	chemBody := `{
+		"establishment_id": 1,
+		"product_name": "Acetone"
+	}`
+	req := httptest.NewRequest("POST", "/api/chemicals", bytes.NewBufferString(chemBody))
+	tc.authRequest(req)
+	w := httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create chemical = %d; %s", w.Code, w.Body.String())
+	}
+	var created map[string]any
+	json.NewDecoder(w.Body).Decode(&created)
+	id := int(created["id"].(float64))
+
+	// Discontinue with a reason.
+	req = httptest.NewRequest("POST", "/api/chemicals/"+itoa(id)+"/discontinue",
+		bytes.NewBufferString(`{"reason":"Replaced"}`))
+	tc.authRequest(req)
+	w = httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("discontinue = %d; %s", w.Code, w.Body.String())
+	}
+
+	row := fetchRow(t, tc, "/api/chemicals/"+itoa(id))
+	if row["is_active"].(float64) != 0 {
+		t.Errorf("after discontinue is_active = %v, want 0", row["is_active"])
+	}
+	if row["discontinued_reason"] != "Replaced" {
+		t.Errorf("discontinued_reason = %v", row["discontinued_reason"])
+	}
+
+	postAction(t, tc, "/api/chemicals/"+itoa(id)+"/reactivate")
+	row = fetchRow(t, tc, "/api/chemicals/"+itoa(id))
+	if row["is_active"].(float64) != 1 {
+		t.Errorf("after reactivate is_active = %v, want 1", row["is_active"])
+	}
+	if row["discontinued_reason"] != nil {
+		t.Errorf("expected discontinued_reason cleared, got %v", row["discontinued_reason"])
+	}
+	if row["discontinued_date"] != nil {
+		t.Errorf("expected discontinued_date cleared, got %v", row["discontinued_date"])
+	}
+}
+
+func TestUserDeactivateReactivate(t *testing.T) {
+	tc := newTestServerWithDB(t)
+
+	// Create a second user.
+	userBody := `{"username":"alice","display_name":"Alice","password":"alicepass","role":"user"}`
+	req := httptest.NewRequest("POST", "/api/users", bytes.NewBufferString(userBody))
+	tc.authRequest(req)
+	w := httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create user = %d; %s", w.Code, w.Body.String())
+	}
+	var created map[string]any
+	json.NewDecoder(w.Body).Decode(&created)
+	id := int(created["id"].(float64))
+
+	postAction(t, tc, "/api/users/"+itoa(id)+"/deactivate")
+	if row := fetchRow(t, tc, "/api/users/"+itoa(id)); row["is_active"].(bool) != false {
+		t.Errorf("after deactivate is_active = %v, want false", row["is_active"])
+	}
+
+	postAction(t, tc, "/api/users/"+itoa(id)+"/reactivate")
+	if row := fetchRow(t, tc, "/api/users/"+itoa(id)); row["is_active"].(bool) != true {
+		t.Errorf("after reactivate is_active = %v, want true", row["is_active"])
+	}
+}

@@ -356,6 +356,25 @@ func (s *Server) handleDeactivateUser(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]string{"status": "ok"})
 }
 
+func (s *Server) handleReactivateUser(w http.ResponseWriter, r *http.Request) {
+	if admin := s.requireAdmin(w, r); admin == nil {
+		return
+	}
+
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		writeError(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	if err := s.users.Reactivate(id); err != nil {
+		writeError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, map[string]string{"status": "ok"})
+}
+
 func (s *Server) handleSetUserPassword(w http.ResponseWriter, r *http.Request) {
 	if admin := s.requireAdmin(w, r); admin == nil {
 		return

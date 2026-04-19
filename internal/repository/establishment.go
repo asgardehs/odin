@@ -48,6 +48,24 @@ func (r *Repo) UpdateEstablishment(user string, id int64, in EstablishmentInput)
 	)
 }
 
+// DeactivateEstablishment marks an establishment as inactive (soft delete).
+func (r *Repo) DeactivateEstablishment(user string, id int64) error {
+	return r.updateAndAudit(establishmentTable, establishmentModule, id, user,
+		fmt.Sprintf("Deactivated establishment %d", id),
+		`UPDATE establishments SET is_active = 0, updated_at = datetime('now')
+		 WHERE id = ?`, id,
+	)
+}
+
+// ReactivateEstablishment restores a previously deactivated establishment.
+func (r *Repo) ReactivateEstablishment(user string, id int64) error {
+	return r.updateAndAudit(establishmentTable, establishmentModule, id, user,
+		fmt.Sprintf("Reactivated establishment %d", id),
+		`UPDATE establishments SET is_active = 1, updated_at = datetime('now')
+		 WHERE id = ?`, id,
+	)
+}
+
 func (r *Repo) DeleteEstablishment(user string, id int64) error {
 	return r.deleteAndAudit(establishmentTable, establishmentModule, id, user,
 		fmt.Sprintf("Deleted establishment %d", id),

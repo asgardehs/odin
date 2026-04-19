@@ -34,6 +34,16 @@ func (s *Server) writeRoutes() {
 			return s.repo.UpdateEstablishment(user, id, in)
 		},
 	))
+	s.mux.HandleFunc("POST /api/establishments/{id}/deactivate", s.handleAction(
+		func(user string, id int64, _ []byte) error {
+			return s.repo.DeactivateEstablishment(user, id)
+		},
+	))
+	s.mux.HandleFunc("POST /api/establishments/{id}/reactivate", s.handleAction(
+		func(user string, id int64, _ []byte) error {
+			return s.repo.ReactivateEstablishment(user, id)
+		},
+	))
 	s.mux.HandleFunc("DELETE /api/establishments/{id}", s.handleDelete(
 		func(user string, id int64) error {
 			return s.repo.DeleteEstablishment(user, id)
@@ -62,6 +72,11 @@ func (s *Server) writeRoutes() {
 	s.mux.HandleFunc("POST /api/employees/{id}/deactivate", s.handleAction(
 		func(user string, id int64, _ []byte) error {
 			return s.repo.DeactivateEmployee(user, id)
+		},
+	))
+	s.mux.HandleFunc("POST /api/employees/{id}/reactivate", s.handleAction(
+		func(user string, id int64, _ []byte) error {
+			return s.repo.ReactivateEmployee(user, id)
 		},
 	))
 	s.mux.HandleFunc("DELETE /api/employees/{id}", s.handleDelete(
@@ -165,6 +180,11 @@ func (s *Server) writeRoutes() {
 			}
 			json.Unmarshal(body, &req)
 			return s.repo.DiscontinueChemical(user, id, req.Reason)
+		},
+	))
+	s.mux.HandleFunc("POST /api/chemicals/{id}/reactivate", s.handleAction(
+		func(user string, id int64, _ []byte) error {
+			return s.repo.ReactivateChemical(user, id)
 		},
 	))
 	s.mux.HandleFunc("DELETE /api/chemicals/{id}", s.handleDelete(
@@ -406,6 +426,11 @@ func (s *Server) writeRoutes() {
 	s.mux.HandleFunc("POST /api/waste-streams/{id}/deactivate", s.handleAction(
 		func(user string, id int64, _ []byte) error {
 			return s.repo.DeactivateWasteStream(user, id)
+		},
+	))
+	s.mux.HandleFunc("POST /api/waste-streams/{id}/reactivate", s.handleAction(
+		func(user string, id int64, _ []byte) error {
+			return s.repo.ReactivateWasteStream(user, id)
 		},
 	))
 	s.mux.HandleFunc("DELETE /api/waste-streams/{id}", s.handleDelete(

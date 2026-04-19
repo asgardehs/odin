@@ -87,6 +87,15 @@ func (r *Repo) DeactivateWasteStream(user string, id int64) error {
 	)
 }
 
+// ReactivateWasteStream restores a previously deactivated waste stream.
+func (r *Repo) ReactivateWasteStream(user string, id int64) error {
+	return r.updateAndAudit(wasteStreamTable, wasteStreamModule, id, user,
+		fmt.Sprintf("Reactivated waste stream %d", id),
+		`UPDATE waste_streams SET is_active = 1, updated_at = datetime('now')
+		 WHERE id = ?`, id,
+	)
+}
+
 func (r *Repo) DeleteWasteStream(user string, id int64) error {
 	return r.deleteAndAudit(wasteStreamTable, wasteStreamModule, id, user,
 		fmt.Sprintf("Deleted waste stream %d", id),

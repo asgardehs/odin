@@ -101,6 +101,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/users/{id}", s.handleGetUser)
 	s.mux.HandleFunc("PUT /api/users/{id}", s.handleUpdateUser)
 	s.mux.HandleFunc("POST /api/users/{id}/deactivate", s.handleDeactivateUser)
+	s.mux.HandleFunc("POST /api/users/{id}/reactivate", s.handleReactivateUser)
 	s.mux.HandleFunc("POST /api/users/{id}/password", s.handleSetUserPassword)
 
 	// Data API routes (requires database).

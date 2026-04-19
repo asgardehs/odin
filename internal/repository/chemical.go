@@ -117,6 +117,17 @@ func (r *Repo) DiscontinueChemical(user string, id int64, reason string) error {
 	)
 }
 
+// ReactivateChemical restores a discontinued chemical, clearing the
+// discontinued_date and discontinued_reason fields.
+func (r *Repo) ReactivateChemical(user string, id int64) error {
+	return r.updateAndAudit(chemicalTable, chemicalModule, id, user,
+		fmt.Sprintf("Reactivated chemical %d", id),
+		`UPDATE chemicals SET is_active = 1, discontinued_date = NULL,
+		        discontinued_reason = NULL, updated_at = datetime('now')
+		 WHERE id = ?`, id,
+	)
+}
+
 func (r *Repo) DeleteChemical(user string, id int64) error {
 	return r.deleteAndAudit(chemicalTable, chemicalModule, id, user,
 		fmt.Sprintf("Deleted chemical %d", id),
