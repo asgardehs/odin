@@ -79,8 +79,7 @@ Everything FKs to these, so they come first.
 **Sections:** Product Identity • Regulatory Flags • Physical Properties.
 **Status actions:** discontinue via `POST /api/chemicals/{id}/discontinue`.
 **Endpoints:** `POST/PUT/DELETE /api/chemicals{/:id}`.
-**Sub-records (modal on chemical detail):**
-- Add inventory snapshot → `POST /api/chemical-inventory` (verify endpoint exists — GET does, write may need confirming). Fields: storage_location_id, container_type, quantity*, unit*, snapshot_date*, snapshot_type.
+**Sub-records (modal on chemical detail):** *Deferred — see Deferred modules section. Requires backend Create/Delete + a `storage_locations` module with seed data.*
 
 ### 5. Incidents
 **Page form fields:** establishment_id*, case_number, employee_id (involved), incident_date*, incident_time, location_description, incident_description*, case_classification_code, severity_code, status.
@@ -141,6 +140,7 @@ Not in this plan's scope — come back when upstream work clears.
 
 - **Audits.** Deferred pending feedback from ISO auditors. Backend is complete; frontend skipped for now. When the auditor feedback lands, audits becomes a full-module add (list/detail/create/edit page + findings modal + sidebar icon).
 - **Emission Units.** Deferred pending legal review to confirm all required fields are captured. Backend is currently GET-only by design. When writes are added, the module gets create/edit UI in the pattern of the other 11.
+- **Chemical Inventory snapshot modal.** Originally planned as a sub-record on chemical detail. Deferred because the whole dependency chain is missing: no repo Create/Delete methods, no POST route, and no seeded `storage_locations` (required FK). Lift: add `storage_locations` as its own primary module first (list/detail/create/edit), seed some, then come back and add the inventory modal. Backend GET for `/api/chemical-inventory` already exists so list-only views can ship earlier if needed.
 
 ## Decisions locked in
 
