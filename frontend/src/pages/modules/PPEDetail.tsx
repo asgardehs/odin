@@ -9,6 +9,7 @@ import { FormField } from '../../components/forms/FormField';
 import { EntitySelector } from '../../components/forms/EntitySelector';
 import { useEntityMutation } from '../../hooks/useEntityMutation';
 import { useAuth } from '../../context/AuthContext';
+import { AuditHistory } from '../../components/AuditHistory';
 import { formatDate } from '../../utils/date';
 
 type PPERow = Record<string, unknown>;
@@ -501,6 +502,8 @@ export default function PPEDetail() {
           <Field label="Created" value={data.created_at} />
           <Field label="Updated" value={data.updated_at} />
         </Section>
+
+        <AuditHistory module="ppe_items" entityId={id} />
       </div>
 
       <AssignModal

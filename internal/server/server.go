@@ -77,6 +77,12 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/audit/{module}/{entityID}", s.handleAuditHistory)
 	s.mux.HandleFunc("POST /api/audit/export", s.handleAuditExport)
 
+	// Admin-only in-app audit viewer. Uses session auth + admin role
+	// rather than the OS-credentials gate of /api/audit/*. Weaker
+	// assurance — intended for day-to-day review; the OS-auth path
+	// above stays available for formal compliance access.
+	s.mux.HandleFunc("GET /api/admin/audit/{module}/{entityID}", s.handleAdminAuditHistory)
+
 	// Application auth routes.
 	// Login, reset-password, and recover are rate-limited (per-IP token bucket)
 	// to prevent brute-force attacks.
@@ -163,6 +169,27 @@ func (s *Server) handleAuditHistory(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(entries)
+}
+
+// handleAdminAuditHistory is the session-auth'd audit viewer. Requires
+// admin role. The read is recorded in the audit log so who-read-what
+// stays visible alongside who-changed-what.
+func (s *Server) handleAdminAuditHistory(w http.ResponseWriter, r *http.Request) {
+	admin := s.requireAdmin(w, r)
+	if admin == nil {
+		return
+	}
+
+	module := r.PathValue("module")
+	entityID := r.PathValue("entityID")
+
+	entries, err := s.audit.ReadHistoryAsAdmin(module, entityID, admin.Username)
+	if err != nil {
+		writeError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, entries)
 }
 
 // exportRequest is the JSON body for the audit export endpoint.

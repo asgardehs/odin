@@ -8,6 +8,7 @@ import { Modal } from '../../components/Modal';
 import { FormField } from '../../components/forms/FormField';
 import { useEntityMutation } from '../../hooks/useEntityMutation';
 import { useAuth } from '../../context/AuthContext';
+import { AuditHistory } from '../../components/AuditHistory';
 import { formatDate } from '../../utils/date';
 
 type InspectionRow = Record<string, unknown>;
@@ -416,6 +417,8 @@ export default function InspectionDetail() {
           <Field label="Created" value={data.created_at} />
           <Field label="Updated" value={data.updated_at} />
         </Section>
+
+        <AuditHistory module="inspections" entityId={id} />
       </div>
 
       {confirm && (

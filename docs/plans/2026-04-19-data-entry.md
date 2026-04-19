@@ -232,17 +232,23 @@ Not in this plan's scope — come back when upstream work clears.
   exposes reactivate as a button alongside deactivate on admin-accessible entity
   detail pages.
 
-## Cross-cutting open questions
+## Cross-cutting decisions
 
-1. **Soft delete vs hard delete** — DELETE endpoints exist for most entities.
-   Should the UI prefer deactivate-and-hide over hard delete for anything with
-   audit history? Recommendation: yes — reserve DELETE for records created in
-   error.
-2. **Establishment scoping** — when editing from a particular establishment's
-   context, should lists/selectors auto-filter to that establishment? Or always
-   show everything?
-3. **Bulk operations** — any need for "import chemicals from CSV" or similar at
-   launch, or is single-record entry fine for now?
+1. **Soft delete vs hard delete** — **Decided (post-release work).** Hard
+   delete is reserved for records created in error. Deletes will still be
+   written to the audit log. Post-release, add a reason modal with common
+   reason checkboxes ("duplicate", "test data", "wrong entity", "entered
+   under wrong facility", etc. — TBD) plus a free-text notes field. The
+   reason is recorded in the audit trail alongside the delete.
+2. **Establishment scoping** — **Decided: show everything.** Field-level
+   search (via `EntitySelector` ?q= and list search) is enough to narrow down
+   results. No auto-filtering by current establishment context.
+3. **Bulk operations** — **Decided: support CSV import, Python-powered.**
+   Plan to fork / inline [kluctl/go-embed-python](https://github.com/kluctl/go-embed-python)
+   into the Asgard EHS ecosystem so we can ship a current-version Python
+   runtime alongside Odin for CSV parsing and transform work (pandas et al.).
+   Future work — not in this plan's scope. Tracking in the Asgard-wide
+   backlog.
 
 ## Future enhancements (post-plan backlog)
 

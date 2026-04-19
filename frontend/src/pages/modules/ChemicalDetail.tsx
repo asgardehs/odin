@@ -9,6 +9,7 @@ import { FormField } from '../../components/forms/FormField';
 import { EntitySelector } from '../../components/forms/EntitySelector';
 import { useEntityMutation } from '../../hooks/useEntityMutation';
 import { useAuth } from '../../context/AuthContext';
+import { AuditHistory } from '../../components/AuditHistory';
 import { formatDate } from '../../utils/date';
 
 type ChemicalRow = Record<string, unknown>;
@@ -489,6 +490,8 @@ export default function ChemicalDetail() {
           <Field label="Created" value={data.created_at} />
           <Field label="Updated" value={data.updated_at} />
         </Section>
+
+        <AuditHistory module="chemicals" entityId={id} />
       </div>
 
       {confirm && (

@@ -150,6 +150,23 @@ func (s *Store) History(module, entityID string, creds auth.Credentials) ([]Hist
 	return s.readHistory(module, entityID)
 }
 
+// ReadHistoryAsAdmin returns entity history for an in-app admin whose
+// identity has already been verified by the HTTP layer (session token +
+// admin role check). The read is recorded in the audit log so the
+// access trail is preserved. This path is weaker than History() — it
+// relies on web session auth rather than OS credentials — and is
+// intended for day-to-day review inside the app. Formal compliance
+// access should continue to use History() with OS credentials.
+func (s *Store) ReadHistoryAsAdmin(module, entityID, adminUser string) ([]HistoryEntry, error) {
+	_ = s.Record(Entry{
+		Action:  ActionRead,
+		Module:  "audit_access",
+		User:    adminUser,
+		Summary: fmt.Sprintf("admin read %s/%s", module, entityID),
+	})
+	return s.readHistory(module, entityID)
+}
+
 // Export returns all audit entries in a date range. Requires auth.
 func (s *Store) Export(start, end time.Time, creds auth.Credentials) ([]HistoryEntry, error) {
 	if err := s.auth.Verify(creds.Username, creds.Password); err != nil {

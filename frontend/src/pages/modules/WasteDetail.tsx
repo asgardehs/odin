@@ -5,6 +5,7 @@ import { Field, Section } from '../../components/DetailSection';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { useEntityMutation } from '../../hooks/useEntityMutation';
 import { useAuth } from '../../context/AuthContext';
+import { AuditHistory } from '../../components/AuditHistory';
 
 type WasteRow = Record<string, unknown>;
 
@@ -208,6 +209,8 @@ export default function WasteDetail() {
           <Field label="Created" value={data.created_at} />
           <Field label="Updated" value={data.updated_at} />
         </Section>
+
+        <AuditHistory module="waste_streams" entityId={id} />
       </div>
 
       {confirm && (

@@ -9,6 +9,7 @@ import { FormField } from '../../components/forms/FormField';
 import { EntitySelector } from '../../components/forms/EntitySelector';
 import { useEntityMutation } from '../../hooks/useEntityMutation';
 import { useAuth } from '../../context/AuthContext';
+import { AuditHistory } from '../../components/AuditHistory';
 import { formatDate } from '../../utils/date';
 
 type TrainingRow = Record<string, unknown>;
@@ -530,6 +531,8 @@ export default function TrainingDetail() {
           <Field label="Created" value={data.created_at} />
           <Field label="Updated" value={data.updated_at} />
         </Section>
+
+        <AuditHistory module="training_courses" entityId={id} />
       </div>
 
       <LogCompletionModal
