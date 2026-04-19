@@ -12,6 +12,7 @@ import EmployeeDetail from './pages/modules/EmployeeDetail';
 import EmployeeForm from './pages/modules/EmployeeForm';
 import IncidentList from './pages/modules/IncidentList';
 import IncidentDetail from './pages/modules/IncidentDetail';
+import IncidentForm from './pages/modules/IncidentForm';
 import ChemicalList from './pages/modules/ChemicalList';
 import ChemicalDetail from './pages/modules/ChemicalDetail';
 import ChemicalForm from './pages/modules/ChemicalForm';
@@ -62,7 +63,9 @@ function AppRoutes() {
           <Route path="employees/:id/edit" element={<EmployeeForm />} />
 
           <Route path="incidents" element={<IncidentList />} />
+          <Route path="incidents/new" element={<IncidentForm />} />
           <Route path="incidents/:id" element={<IncidentDetail />} />
+          <Route path="incidents/:id/edit" element={<IncidentForm />} />
 
           <Route path="chemicals" element={<ChemicalList />} />
           <Route path="chemicals/new" element={<ChemicalForm />} />
