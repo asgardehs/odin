@@ -22,6 +22,7 @@ import InspectionList from './pages/modules/InspectionList';
 import InspectionDetail from './pages/modules/InspectionDetail';
 import PermitList from './pages/modules/PermitList';
 import PermitDetail from './pages/modules/PermitDetail';
+import PermitForm from './pages/modules/PermitForm';
 import WasteList from './pages/modules/WasteList';
 import WasteDetail from './pages/modules/WasteDetail';
 import PPEList from './pages/modules/PPEList';
@@ -79,7 +80,9 @@ function AppRoutes() {
           <Route path="inspections/:id" element={<InspectionDetail />} />
 
           <Route path="permits" element={<PermitList />} />
+          <Route path="permits/new" element={<PermitForm />} />
           <Route path="permits/:id" element={<PermitDetail />} />
+          <Route path="permits/:id/edit" element={<PermitForm />} />
 
           <Route path="waste" element={<WasteList />} />
           <Route path="waste/:id" element={<WasteDetail />} />

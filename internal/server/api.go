@@ -216,6 +216,25 @@ func (s *Server) apiRoutes() {
 		"permit_number", "permit_name",
 	)
 
+	// Lookup tables backing permit_type_id and issuing_agency_id
+	// FKs. Read-only from the UI — admin UIs for these come later.
+	s.entityRoutes("/api/permit-types", "permit type",
+		`SELECT id, type_code, type_name, category, federal_authority
+		 FROM permit_types ORDER BY category, type_name LIMIT ? OFFSET ?`,
+		`SELECT COUNT(*) FROM permit_types`,
+		`SELECT * FROM permit_types WHERE id = ?`,
+		"type_code", "type_name", "category",
+	)
+
+	s.entityRoutes("/api/regulatory-agencies", "regulatory agency",
+		`SELECT id, agency_code, agency_name, agency_type,
+		        jurisdiction_state, jurisdiction_region
+		 FROM regulatory_agencies ORDER BY agency_name LIMIT ? OFFSET ?`,
+		`SELECT COUNT(*) FROM regulatory_agencies`,
+		`SELECT * FROM regulatory_agencies WHERE id = ?`,
+		"agency_code", "agency_name",
+	)
+
 	// -- Industrial Waste --
 
 	s.entityRoutes("/api/waste-streams", "waste stream",
