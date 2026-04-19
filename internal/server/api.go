@@ -182,6 +182,14 @@ func (s *Server) apiRoutes() {
 		`SELECT * FROM training_completions WHERE id = ?`,
 	)
 
+	s.entityRoutes("/api/training/assignments", "training assignment",
+		`SELECT id, employee_id, course_id, due_date, priority, status,
+		        assigned_by, assigned_date, created_at
+		 FROM training_assignments ORDER BY due_date LIMIT ? OFFSET ?`,
+		`SELECT COUNT(*) FROM training_assignments`,
+		`SELECT * FROM training_assignments WHERE id = ?`,
+	)
+
 	// -- Inspections & Audits --
 
 	s.entityRoutes("/api/inspections", "inspection",

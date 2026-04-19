@@ -18,6 +18,7 @@ import ChemicalDetail from './pages/modules/ChemicalDetail';
 import ChemicalForm from './pages/modules/ChemicalForm';
 import TrainingList from './pages/modules/TrainingList';
 import TrainingDetail from './pages/modules/TrainingDetail';
+import TrainingForm from './pages/modules/TrainingForm';
 import InspectionList from './pages/modules/InspectionList';
 import InspectionDetail from './pages/modules/InspectionDetail';
 import InspectionForm from './pages/modules/InspectionForm';
@@ -75,7 +76,9 @@ function AppRoutes() {
           <Route path="chemicals/:id/edit" element={<ChemicalForm />} />
 
           <Route path="training" element={<TrainingList />} />
+          <Route path="training/new" element={<TrainingForm />} />
           <Route path="training/:id" element={<TrainingDetail />} />
+          <Route path="training/:id/edit" element={<TrainingForm />} />
 
           <Route path="inspections" element={<InspectionList />} />
           <Route path="inspections/new" element={<InspectionForm />} />
