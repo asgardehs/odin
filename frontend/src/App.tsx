@@ -27,6 +27,7 @@ import PermitDetail from './pages/modules/PermitDetail';
 import PermitForm from './pages/modules/PermitForm';
 import WasteList from './pages/modules/WasteList';
 import WasteDetail from './pages/modules/WasteDetail';
+import WasteForm from './pages/modules/WasteForm';
 import PPEList from './pages/modules/PPEList';
 import PPEDetail from './pages/modules/PPEDetail';
 import PPEForm from './pages/modules/PPEForm';
@@ -92,7 +93,9 @@ function AppRoutes() {
           <Route path="permits/:id/edit" element={<PermitForm />} />
 
           <Route path="waste" element={<WasteList />} />
+          <Route path="waste/new" element={<WasteForm />} />
           <Route path="waste/:id" element={<WasteDetail />} />
+          <Route path="waste/:id/edit" element={<WasteForm />} />
 
           <Route path="ppe" element={<PPEList />} />
           <Route path="ppe/new" element={<PPEForm />} />
