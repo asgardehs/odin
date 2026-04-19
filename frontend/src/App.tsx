@@ -24,6 +24,9 @@ import WasteList from './pages/modules/WasteList';
 import WasteDetail from './pages/modules/WasteDetail';
 import PPEList from './pages/modules/PPEList';
 import PPEDetail from './pages/modules/PPEDetail';
+import UsersList from './pages/admin/UsersList';
+import UserForm from './pages/admin/UserForm';
+import { AdminOnly } from './components/AdminOnly';
 
 
 function AppRoutes() {
@@ -79,6 +82,10 @@ function AppRoutes() {
           <Route path="ppe/:id" element={<PPEDetail />} />
 
           <Route path="account" element={<Account />} />
+
+          <Route path="admin/users" element={<AdminOnly><UsersList /></AdminOnly>} />
+          <Route path="admin/users/new" element={<AdminOnly><UserForm /></AdminOnly>} />
+          <Route path="admin/users/:id/edit" element={<AdminOnly><UserForm /></AdminOnly>} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -16,6 +16,10 @@ const navItems = [
   { to: '/ppe',           label: 'PPE',          icon: '🦺' },
 ];
 
+const adminNavItems = [
+  { to: '/admin/users', label: 'Users', icon: '🔐' },
+];
+
 export default function Shell() {
   const { user, readonly, logout } = useAuth();
   const navigate = useNavigate();
@@ -58,6 +62,28 @@ export default function Shell() {
               {sidebarOpen && <span>{item.label}</span>}
             </NavLink>
           ))}
+
+          {user?.role === 'admin' && (
+            <>
+              <div className="mt-2 mb-1 px-4 h-px bg-[var(--color-current-line)]" />
+              {adminNavItems.map(item => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    `flex items-center h-10 px-4 gap-3 text-sm transition-colors whitespace-nowrap ${
+                      isActive
+                        ? 'text-[var(--color-purple)] bg-[var(--color-bg-lighter)] border-r-2 border-[var(--color-fn-purple)]'
+                        : 'text-[var(--color-fg)] hover:text-[var(--color-fg)] hover:bg-[var(--color-bg-lighter)]'
+                    }`
+                  }
+                >
+                  <span className="text-base w-5 text-center shrink-0">{item.icon}</span>
+                  {sidebarOpen && <span>{item.label}</span>}
+                </NavLink>
+              ))}
+            </>
+          )}
         </div>
 
         {/* User area */}
