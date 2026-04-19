@@ -43,6 +43,18 @@ Ideas we want to preserve but are explicitly not in scope for this plan.
     (Section 2 GHS classification, Section 9 physical properties) — would save
     significant data entry. Could live behind a feature flag initially.
 
+- **Schema import/export between establishments.** Once the Schema Builder
+  ships, admins should be able to export a custom table's definition
+  (metadata rows from `_custom_tables`, `_custom_fields`,
+  `_custom_relations`) to a portable file and import it into another
+  establishment's Odin instance. Format: JSON with a version field and a
+  stable shape that survives minor metadata additions. Flow: export
+  button on the designer page → download `.odin-schema.json`; import
+  button on `/admin/schema` → file picker → diff preview → apply.
+  Data rows are *not* exported — schema only. Keeps establishments from
+  drifting when the same custom table is wanted in multiple places.
+  Not in scope for the initial Schema Builder phase.
+
 - **Clickable Inspection Findings — read-only detail modal.** Today findings
   are listed on the Inspection detail page but can't be opened. A user should
   be able to click a row and see the full record (description, citation,
