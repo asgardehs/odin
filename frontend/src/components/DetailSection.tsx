@@ -14,8 +14,8 @@ export function Field({ label, value }: { label: string; value: unknown }) {
 
   return (
     <div>
-      <dt className="text-xs text-[var(--color-text-muted)] uppercase tracking-wide mb-0.5">{label}</dt>
-      <dd className="text-[var(--color-text-primary)] text-sm">{display}</dd>
+      <dt className="text-xs text-[var(--color-comment)] uppercase tracking-wide mb-0.5">{label}</dt>
+      <dd className="text-[var(--color-fg)] text-sm">{display}</dd>
     </div>
   );
 }
@@ -23,8 +23,8 @@ export function Field({ label, value }: { label: string; value: unknown }) {
 /** A titled card grouping several Fields in a responsive grid. */
 export function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="rounded-xl bg-[var(--color-bg-card)] border border-[var(--color-border)] p-5">
-      <h2 className="text-xs font-semibold text-[var(--color-accent-light)] uppercase tracking-wider mb-4">
+    <div className="rounded-xl bg-[var(--color-bg-light)] border border-[var(--color-current-line)] p-5">
+      <h2 className="text-xs font-semibold text-[var(--color-purple)] uppercase tracking-wider mb-4">
         {title}
       </h2>
       <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4">{children}</dl>

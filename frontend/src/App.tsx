@@ -29,8 +29,8 @@ function AppRoutes() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-[var(--color-bg-primary)]">
-        <span className="text-[var(--color-text-muted)] text-sm">Loading...</span>
+      <div className="flex items-center justify-center h-screen bg-[var(--color-bg)]">
+        <span className="text-[var(--color-comment)] text-sm">Loading...</span>
       </div>
     );
   }

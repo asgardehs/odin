@@ -11,7 +11,7 @@ export default function TrainingDetail() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-12 text-[var(--color-text-muted)] text-sm">
+      <div className="flex items-center justify-center p-12 text-[var(--color-comment)] text-sm">
         Loading…
       </div>
     );
@@ -20,9 +20,9 @@ export default function TrainingDetail() {
   if (error || !data) {
     const notFound = error?.startsWith('404');
     return (
-      <div className="flex flex-col items-center gap-4 p-12 text-[var(--color-text-muted)]">
+      <div className="flex flex-col items-center gap-4 p-12 text-[var(--color-comment)]">
         <p className="text-sm">{notFound ? 'Training course not found.' : `Error: ${error}`}</p>
-        <button onClick={() => navigate('/training')} className="text-xs text-[var(--color-accent-light)] hover:underline">
+        <button onClick={() => navigate('/training')} className="text-xs text-[var(--color-purple)] hover:underline">
           ← Back to Training
         </button>
       </div>
@@ -39,13 +39,13 @@ export default function TrainingDetail() {
       <div className="flex items-center gap-4 mb-6">
         <button
           onClick={() => navigate('/training')}
-          className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] text-sm transition-colors"
+          className="text-[var(--color-comment)] hover:text-[var(--color-fg)] text-sm transition-colors"
         >
           ← Training
         </button>
         <div>
-          <p className="text-xs text-[var(--color-text-muted)] mb-0.5">{String(data.course_code ?? '')}</p>
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">
+          <p className="text-xs text-[var(--color-comment)] mb-0.5">{String(data.course_code ?? '')}</p>
+          <h1 className="text-2xl font-bold text-[var(--color-fg)]">
             {String(data.course_name ?? 'Course')}
           </h1>
         </div>
@@ -61,11 +61,11 @@ export default function TrainingDetail() {
         </Section>
 
         {!!data.description && (
-          <div className="rounded-xl bg-[var(--color-bg-card)] border border-[var(--color-border)] p-5">
-            <h2 className="text-xs font-semibold text-[var(--color-accent-light)] uppercase tracking-wider mb-3">
+          <div className="rounded-xl bg-[var(--color-bg-light)] border border-[var(--color-current-line)] p-5">
+            <h2 className="text-xs font-semibold text-[var(--color-purple)] uppercase tracking-wider mb-3">
               Description
             </h2>
-            <p className="text-sm text-[var(--color-text-primary)] whitespace-pre-wrap">
+            <p className="text-sm text-[var(--color-fg)] whitespace-pre-wrap">
               {String(data.description)}
             </p>
           </div>

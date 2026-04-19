@@ -11,7 +11,7 @@ export default function EmployeeDetail() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-12 text-[var(--color-text-muted)] text-sm">
+      <div className="flex items-center justify-center p-12 text-[var(--color-comment)] text-sm">
         Loading…
       </div>
     );
@@ -20,9 +20,9 @@ export default function EmployeeDetail() {
   if (error || !data) {
     const notFound = error?.startsWith('404');
     return (
-      <div className="flex flex-col items-center gap-4 p-12 text-[var(--color-text-muted)]">
+      <div className="flex flex-col items-center gap-4 p-12 text-[var(--color-comment)]">
         <p className="text-sm">{notFound ? 'Employee not found.' : `Error: ${error}`}</p>
-        <button onClick={() => navigate('/employees')} className="text-xs text-[var(--color-accent-light)] hover:underline">
+        <button onClick={() => navigate('/employees')} className="text-xs text-[var(--color-purple)] hover:underline">
           ← Back to Employees
         </button>
       </div>
@@ -36,16 +36,16 @@ export default function EmployeeDetail() {
       <div className="flex items-center gap-4 mb-6">
         <button
           onClick={() => navigate('/employees')}
-          className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] text-sm transition-colors"
+          className="text-[var(--color-comment)] hover:text-[var(--color-fg)] text-sm transition-colors"
         >
           ← Employees
         </button>
-        <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{fullName}</h1>
+        <h1 className="text-2xl font-bold text-[var(--color-fg)]">{fullName}</h1>
         <span
           className={`ml-auto text-xs font-medium px-2 py-0.5 rounded-full ${
             data.is_active
-              ? 'bg-[var(--color-status-ok)]/15 text-[var(--color-status-ok)]'
-              : 'bg-[var(--color-border)] text-[var(--color-text-muted)]'
+              ? 'bg-[var(--color-fn-green)]/15 text-[var(--color-fn-green)]'
+              : 'bg-[var(--color-current-line)] text-[var(--color-comment)]'
           }`}
         >
           {data.is_active ? 'Active' : 'Inactive'}

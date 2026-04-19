@@ -7,7 +7,7 @@ type ChemicalRow = Record<string, unknown>;
 function HazardBadge({ label, active }: { label: string; active: unknown }) {
   if (!active) return null;
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[var(--color-status-danger)]/15 text-[var(--color-status-danger)] mr-2">
+    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[var(--color-fn-red)]/15 text-[var(--color-fn-red)] mr-2">
       ⚠ {label}
     </span>
   );
@@ -20,7 +20,7 @@ export default function ChemicalDetail() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-12 text-[var(--color-text-muted)] text-sm">
+      <div className="flex items-center justify-center p-12 text-[var(--color-comment)] text-sm">
         Loading…
       </div>
     );
@@ -29,9 +29,9 @@ export default function ChemicalDetail() {
   if (error || !data) {
     const notFound = error?.startsWith('404');
     return (
-      <div className="flex flex-col items-center gap-4 p-12 text-[var(--color-text-muted)]">
+      <div className="flex flex-col items-center gap-4 p-12 text-[var(--color-comment)]">
         <p className="text-sm">{notFound ? 'Chemical not found.' : `Error: ${error}`}</p>
-        <button onClick={() => navigate('/chemicals')} className="text-xs text-[var(--color-accent-light)] hover:underline">
+        <button onClick={() => navigate('/chemicals')} className="text-xs text-[var(--color-purple)] hover:underline">
           ← Back to Chemicals
         </button>
       </div>
@@ -45,18 +45,18 @@ export default function ChemicalDetail() {
       <div className="flex items-center gap-4 mb-6">
         <button
           onClick={() => navigate('/chemicals')}
-          className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] text-sm transition-colors"
+          className="text-[var(--color-comment)] hover:text-[var(--color-fg)] text-sm transition-colors"
         >
           ← Chemicals
         </button>
-        <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">
+        <h1 className="text-2xl font-bold text-[var(--color-fg)]">
           {String(data.product_name ?? 'Chemical')}
         </h1>
         <span
           className={`ml-auto text-xs font-medium px-2 py-0.5 rounded-full ${
             data.is_active
-              ? 'bg-[var(--color-status-ok)]/15 text-[var(--color-status-ok)]'
-              : 'bg-[var(--color-border)] text-[var(--color-text-muted)]'
+              ? 'bg-[var(--color-fn-green)]/15 text-[var(--color-fn-green)]'
+              : 'bg-[var(--color-current-line)] text-[var(--color-comment)]'
           }`}
         >
           {data.is_active ? 'Active' : 'Inactive'}
@@ -65,8 +65,8 @@ export default function ChemicalDetail() {
 
       <div className="flex flex-col gap-4">
         {!!hasHazards && (
-          <div className="rounded-xl bg-[var(--color-status-danger)]/10 border border-[var(--color-status-danger)]/30 px-5 py-4">
-            <p className="text-xs text-[var(--color-status-danger)] font-semibold uppercase tracking-wide mb-2">
+          <div className="rounded-xl bg-[var(--color-fn-red)]/10 border border-[var(--color-fn-red)]/30 px-5 py-4">
+            <p className="text-xs text-[var(--color-fn-red)] font-semibold uppercase tracking-wide mb-2">
               Regulatory Flags
             </p>
             <div>

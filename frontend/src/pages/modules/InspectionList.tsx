@@ -9,7 +9,7 @@ const columns: ColumnDef<Row>[] = [
     accessorKey: 'status',
     header: 'Status',
     cell: ({ getValue }) => (
-      <span className="capitalize text-[var(--color-text-secondary)] text-xs">
+      <span className="capitalize text-[var(--color-fg)] text-xs">
         {String(getValue() ?? '—')}
       </span>
     ),
@@ -21,7 +21,7 @@ export default function InspectionList() {
   const navigate = useNavigate();
   return (
     <div>
-      <h1 className="text-2xl font-bold text-[var(--color-text-primary)] mb-6">Inspections</h1>
+      <h1 className="text-2xl font-bold text-[var(--color-fg)] mb-6">Inspections</h1>
       <DataTable
         columns={columns}
         apiUrl="/api/inspections"

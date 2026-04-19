@@ -1,0 +1,95 @@
+/* Nótt & Dagr — Asgard EHS theme
+ * CSS custom properties for UI chrome.
+ * Editor theming lives in codemirror.ts (not used in Odin yet).
+ *
+ * Source of truth: data-theme attribute on <html>.
+ *   data-theme="nott"  → dark (default)
+ *   data-theme="dagr"  → light
+ *
+ * The useTheme hook sets this attribute; these rules key off it.
+ */
+
+:root,
+:root[data-theme="nott"] {
+  /* Surfaces (darkest → lightest) */
+  --color-bg-darker:    #0C0F16;
+  --color-bg-dark:      #13171F;
+  --color-bg:           #1A1F2E;
+  --color-bg-light:     #242A3B;
+  --color-bg-floating:  #262C3F;
+  --color-current-line: #262C3F;
+  --color-bg-lighter:   #30374A;
+  --color-selection:    #3D4457;
+
+  /* Text */
+  --color-fg:      #E6E4DA;
+  --color-comment: #757C90;
+
+  /* Syntax accents — match the spec roles one-to-one */
+  --color-red:    #E35F5B;  /* errors, deletions */
+  --color-orange: #E8A25C;  /* numbers, constants */
+  --color-yellow: #E6DC82;  /* strings */
+  --color-green:  #8DC776;  /* functions, methods */
+  --color-cyan:   #6EB8D6;  /* classes, types, support */
+  --color-purple: #A692D6;  /* self, this, super */
+  --color-pink:   #DE80A4;  /* keywords, storage */
+
+  /* Functional (UI state) — stronger saturation for chrome surfaces */
+  --color-fn-red:    #C74A35;
+  --color-fn-orange: #A88714;
+  --color-fn-green:  #3E8855;
+  --color-fn-cyan:   #2E7AB5;
+  --color-fn-purple: #6B52B8;
+
+  /* Shadow (tuned for the surface luminance) */
+  --color-shadow: rgba(0, 0, 0, 0.15);
+
+  /* Tell form controls and scrollbars which mode we're in */
+  color-scheme: dark;
+}
+
+:root[data-theme="dagr"] {
+  --color-bg-darker:    #BCB8AB;
+  --color-bg-dark:      #D2CEC0;
+  --color-bg:           #F5F1E4;
+  --color-bg-light:     #E6E1D1;
+  --color-bg-floating:  #EDE9DB;
+  --color-current-line: #EDE9DB;
+  --color-bg-lighter:   #FBF8EC;
+  --color-selection:    #C9D1DF;
+
+  --color-fg:      #1F2330;
+  --color-comment: #6B6A58;
+
+  --color-red:    #B53D3A;
+  --color-orange: #8F5C18;
+  --color-yellow: #6E601A;
+  --color-green:  #3A6525;
+  --color-cyan:   #2B6A8A;
+  --color-purple: #5B4A9E;
+  --color-pink:   #A84272;
+
+  --color-fn-red:    #A0351F;
+  --color-fn-orange: #8C6E0E;
+  --color-fn-green:  #2A6E3F;
+  --color-fn-cyan:   #1A5B8F;
+  --color-fn-purple: #4F3B95;
+
+  --color-shadow: rgba(12, 15, 22, 0.08);
+
+  color-scheme: light;
+}
+
+/* Baseline — the hook handles switching, but these catch first paint
+ * before React mounts so the window doesn't flash white. */
+html, body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  margin: 0;
+}
+
+/* Selection color inside regular prose (CodeMirror handles its own) */
+::selection {
+  background: var(--color-selection);
+  color: var(--color-fg);
+}

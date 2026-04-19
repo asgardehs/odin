@@ -28,7 +28,7 @@ export default function PermitDetail() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-12 text-[var(--color-text-muted)] text-sm">
+      <div className="flex items-center justify-center p-12 text-[var(--color-comment)] text-sm">
         Loading…
       </div>
     );
@@ -37,9 +37,9 @@ export default function PermitDetail() {
   if (error || !data) {
     const notFound = error?.startsWith('404');
     return (
-      <div className="flex flex-col items-center gap-4 p-12 text-[var(--color-text-muted)]">
+      <div className="flex flex-col items-center gap-4 p-12 text-[var(--color-comment)]">
         <p className="text-sm">{notFound ? 'Permit not found.' : `Error: ${error}`}</p>
-        <button onClick={() => navigate('/permits')} className="text-xs text-[var(--color-accent-light)] hover:underline">
+        <button onClick={() => navigate('/permits')} className="text-xs text-[var(--color-purple)] hover:underline">
           ← Back to Permits
         </button>
       </div>
@@ -51,17 +51,17 @@ export default function PermitDetail() {
       <div className="flex items-center gap-4 mb-6">
         <button
           onClick={() => navigate('/permits')}
-          className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] text-sm transition-colors"
+          className="text-[var(--color-comment)] hover:text-[var(--color-fg)] text-sm transition-colors"
         >
           ← Permits
         </button>
         <div>
-          <p className="text-xs text-[var(--color-text-muted)] mb-0.5">{String(data.permit_number ?? '')}</p>
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">
+          <p className="text-xs text-[var(--color-comment)] mb-0.5">{String(data.permit_number ?? '')}</p>
+          <h1 className="text-2xl font-bold text-[var(--color-fg)]">
             {String(data.permit_name ?? 'Permit')}
           </h1>
         </div>
-        <span className="ml-auto text-xs font-medium px-2 py-0.5 rounded-full capitalize bg-[var(--color-border)] text-[var(--color-text-secondary)]">
+        <span className="ml-auto text-xs font-medium px-2 py-0.5 rounded-full capitalize bg-[var(--color-current-line)] text-[var(--color-fg)]">
           {String(data.status ?? '—')}
         </span>
       </div>
@@ -70,8 +70,8 @@ export default function PermitDetail() {
         <div
           className={`rounded-xl border px-5 py-4 mb-4 ${
             daysUntilExpiry !== null && daysUntilExpiry < 0
-              ? 'bg-[var(--color-status-danger)]/10 border-[var(--color-status-danger)]/30 text-[var(--color-status-danger)]'
-              : 'bg-[var(--color-status-warn)]/10 border-[var(--color-status-warn)]/30 text-[var(--color-status-warn)]'
+              ? 'bg-[var(--color-fn-red)]/10 border-[var(--color-fn-red)]/30 text-[var(--color-fn-red)]'
+              : 'bg-[var(--color-fn-orange)]/10 border-[var(--color-fn-orange)]/30 text-[var(--color-fn-orange)]'
           }`}
         >
           <p className="text-sm font-medium">⏰ {expiryWarning}</p>

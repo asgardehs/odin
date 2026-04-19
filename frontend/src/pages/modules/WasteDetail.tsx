@@ -11,7 +11,7 @@ export default function WasteDetail() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-12 text-[var(--color-text-muted)] text-sm">
+      <div className="flex items-center justify-center p-12 text-[var(--color-comment)] text-sm">
         Loading…
       </div>
     );
@@ -20,9 +20,9 @@ export default function WasteDetail() {
   if (error || !data) {
     const notFound = error?.startsWith('404');
     return (
-      <div className="flex flex-col items-center gap-4 p-12 text-[var(--color-text-muted)]">
+      <div className="flex flex-col items-center gap-4 p-12 text-[var(--color-comment)]">
         <p className="text-sm">{notFound ? 'Waste stream not found.' : `Error: ${error}`}</p>
-        <button onClick={() => navigate('/waste')} className="text-xs text-[var(--color-accent-light)] hover:underline">
+        <button onClick={() => navigate('/waste')} className="text-xs text-[var(--color-purple)] hover:underline">
           ← Back to Waste Streams
         </button>
       </div>
@@ -34,21 +34,21 @@ export default function WasteDetail() {
       <div className="flex items-center gap-4 mb-6">
         <button
           onClick={() => navigate('/waste')}
-          className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] text-sm transition-colors"
+          className="text-[var(--color-comment)] hover:text-[var(--color-fg)] text-sm transition-colors"
         >
           ← Waste Streams
         </button>
         <div>
-          <p className="text-xs text-[var(--color-text-muted)] mb-0.5">{String(data.stream_code ?? '')}</p>
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">
+          <p className="text-xs text-[var(--color-comment)] mb-0.5">{String(data.stream_code ?? '')}</p>
+          <h1 className="text-2xl font-bold text-[var(--color-fg)]">
             {String(data.stream_name ?? 'Waste Stream')}
           </h1>
         </div>
         <span
           className={`ml-auto text-xs font-medium px-2 py-0.5 rounded-full ${
             data.is_active
-              ? 'bg-[var(--color-status-ok)]/15 text-[var(--color-status-ok)]'
-              : 'bg-[var(--color-border)] text-[var(--color-text-muted)]'
+              ? 'bg-[var(--color-fn-green)]/15 text-[var(--color-fn-green)]'
+              : 'bg-[var(--color-current-line)] text-[var(--color-comment)]'
           }`}
         >
           {data.is_active ? 'Active' : 'Inactive'}

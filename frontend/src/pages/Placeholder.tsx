@@ -7,9 +7,9 @@ export default function Placeholder() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-[var(--color-text-primary)] mb-4">{title || 'Page'}</h1>
-      <div className="rounded-xl bg-[var(--color-bg-card)] border border-[var(--color-border)] border-dashed p-12 text-center">
-        <p className="text-[var(--color-text-muted)] text-lg">Module view coming soon</p>
+      <h1 className="text-2xl font-bold text-[var(--color-fg)] mb-4">{title || 'Page'}</h1>
+      <div className="rounded-xl bg-[var(--color-bg-light)] border border-[var(--color-current-line)] border-dashed p-12 text-center">
+        <p className="text-[var(--color-comment)] text-lg">Module view coming soon</p>
       </div>
     </div>
   );

@@ -15,9 +15,9 @@ const columns: ColumnDef<Row>[] = [
     header: 'Status',
     cell: ({ getValue }) =>
       getValue() ? (
-        <span className="text-[var(--color-status-ok)] text-xs font-medium">Active</span>
+        <span className="text-[var(--color-fn-green)] text-xs font-medium">Active</span>
       ) : (
-        <span className="text-[var(--color-text-muted)] text-xs">Inactive</span>
+        <span className="text-[var(--color-comment)] text-xs">Inactive</span>
       ),
   },
 ];
@@ -26,7 +26,7 @@ export default function EmployeeList() {
   const navigate = useNavigate();
   return (
     <div>
-      <h1 className="text-2xl font-bold text-[var(--color-text-primary)] mb-6">Employees</h1>
+      <h1 className="text-2xl font-bold text-[var(--color-fg)] mb-6">Employees</h1>
       <DataTable
         columns={columns}
         apiUrl="/api/employees"

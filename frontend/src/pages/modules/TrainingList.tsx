@@ -21,7 +21,7 @@ export default function TrainingList() {
   const navigate = useNavigate();
   return (
     <div>
-      <h1 className="text-2xl font-bold text-[var(--color-text-primary)] mb-6">Training</h1>
+      <h1 className="text-2xl font-bold text-[var(--color-fg)] mb-6">Training</h1>
       <DataTable
         columns={columns}
         apiUrl="/api/training/courses"

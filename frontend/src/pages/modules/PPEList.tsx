@@ -12,9 +12,9 @@ const columns: ColumnDef<Row>[] = [
     cell: ({ getValue }) => {
       const v = String(getValue() ?? '').toLowerCase();
       const color =
-        v === 'active' ? 'var(--color-status-ok)'
-        : v === 'retired' || v === 'expired' ? 'var(--color-status-danger)'
-        : 'var(--color-text-muted)';
+        v === 'active' ? 'var(--color-fn-green)'
+        : v === 'retired' || v === 'expired' ? 'var(--color-fn-red)'
+        : 'var(--color-comment)';
       return <span style={{ color }} className="text-xs font-medium capitalize">{v || '—'}</span>;
     },
   },
@@ -24,7 +24,7 @@ export default function PPEList() {
   const navigate = useNavigate();
   return (
     <div>
-      <h1 className="text-2xl font-bold text-[var(--color-text-primary)] mb-6">PPE</h1>
+      <h1 className="text-2xl font-bold text-[var(--color-fg)] mb-6">PPE</h1>
       <DataTable
         columns={columns}
         apiUrl="/api/ppe/items"

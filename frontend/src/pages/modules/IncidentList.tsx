@@ -3,10 +3,10 @@ import { type ColumnDef } from '@tanstack/react-table';
 import { DataTable, type Row } from '../../components/DataTable';
 
 const SEVERITY_COLORS: Record<string, string> = {
-  fatal:    'var(--color-status-danger)',
-  serious:  'var(--color-status-warn)',
-  moderate: 'var(--color-status-info)',
-  minor:    'var(--color-status-ok)',
+  fatal:    'var(--color-fn-red)',
+  serious:  'var(--color-fn-orange)',
+  moderate: 'var(--color-fn-cyan)',
+  minor:    'var(--color-fn-green)',
 };
 
 const columns: ColumnDef<Row>[] = [
@@ -25,7 +25,7 @@ const columns: ColumnDef<Row>[] = [
     header: 'Severity',
     cell: ({ getValue }) => {
       const v = String(getValue() ?? '').toLowerCase();
-      const color = SEVERITY_COLORS[v] ?? 'var(--color-text-muted)';
+      const color = SEVERITY_COLORS[v] ?? 'var(--color-comment)';
       return <span style={{ color }} className="text-xs font-medium capitalize">{v || '—'}</span>;
     },
   },
@@ -33,7 +33,7 @@ const columns: ColumnDef<Row>[] = [
     accessorKey: 'status',
     header: 'Status',
     cell: ({ getValue }) => (
-      <span className="capitalize text-[var(--color-text-secondary)] text-xs">
+      <span className="capitalize text-[var(--color-fg)] text-xs">
         {String(getValue() ?? '—')}
       </span>
     ),
@@ -44,7 +44,7 @@ export default function IncidentList() {
   const navigate = useNavigate();
   return (
     <div>
-      <h1 className="text-2xl font-bold text-[var(--color-text-primary)] mb-6">Incidents</h1>
+      <h1 className="text-2xl font-bold text-[var(--color-fg)] mb-6">Incidents</h1>
       <DataTable
         columns={columns}
         apiUrl="/api/incidents"

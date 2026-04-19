@@ -61,23 +61,23 @@ export function DataTable({ columns, apiUrl, onRowClick }: DataTableProps) {
   return (
     <div>
       {error && (
-        <div className="rounded-lg bg-[var(--color-status-danger)]/10 border border-[var(--color-status-danger)]/30 text-[var(--color-status-danger)] px-4 py-3 mb-4 text-sm">
+        <div className="rounded-lg bg-[var(--color-fn-red)]/10 border border-[var(--color-fn-red)]/30 text-[var(--color-fn-red)] px-4 py-3 mb-4 text-sm">
           Failed to load: {error}
         </div>
       )}
 
-      <div className="rounded-xl bg-[var(--color-bg-card)] border border-[var(--color-border)] overflow-x-auto">
+      <div className="rounded-xl bg-[var(--color-bg-light)] border border-[var(--color-current-line)] overflow-x-auto">
         <table className="w-full text-sm text-left">
           <thead>
             {table.getHeaderGroups().map(headerGroup => (
               <tr
                 key={headerGroup.id}
-                className="border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
+                className="border-b border-[var(--color-current-line)] bg-[var(--color-bg-dark)]"
               >
                 {headerGroup.headers.map(header => (
                   <th
                     key={header.id}
-                    className="px-4 py-3 font-medium text-[var(--color-text-secondary)] whitespace-nowrap"
+                    className="px-4 py-3 font-medium text-[var(--color-fg)] whitespace-nowrap"
                   >
                     {header.isPlaceholder
                       ? null
@@ -90,10 +90,10 @@ export function DataTable({ columns, apiUrl, onRowClick }: DataTableProps) {
           <tbody>
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i} className="border-b border-[var(--color-border)]/50">
+                <tr key={i} className="border-b border-[var(--color-current-line)]/50">
                   {columns.map((_, j) => (
                     <td key={j} className="px-4 py-3">
-                      <div className="h-4 rounded bg-[var(--color-border)] animate-pulse" />
+                      <div className="h-4 rounded bg-[var(--color-current-line)] animate-pulse" />
                     </td>
                   ))}
                 </tr>
@@ -102,7 +102,7 @@ export function DataTable({ columns, apiUrl, onRowClick }: DataTableProps) {
               <tr>
                 <td
                   colSpan={columns.length}
-                  className="px-4 py-12 text-center text-[var(--color-text-muted)]"
+                  className="px-4 py-12 text-center text-[var(--color-comment)]"
                 >
                   <div className="flex flex-col items-center gap-2">
                     <span className="text-2xl">□</span>
@@ -116,9 +116,9 @@ export function DataTable({ columns, apiUrl, onRowClick }: DataTableProps) {
                   key={row.id}
                   onClick={() => onRowClick?.(row.original)}
                   className={[
-                    idx < rows.length - 1 ? 'border-b border-[var(--color-border)]/50' : '',
+                    idx < rows.length - 1 ? 'border-b border-[var(--color-current-line)]/50' : '',
                     onRowClick
-                      ? 'cursor-pointer hover:bg-[var(--color-bg-hover)] transition-colors'
+                      ? 'cursor-pointer hover:bg-[var(--color-bg-lighter)] transition-colors'
                       : '',
                   ]
                     .filter(Boolean)
@@ -127,7 +127,7 @@ export function DataTable({ columns, apiUrl, onRowClick }: DataTableProps) {
                   {row.getVisibleCells().map(cell => (
                     <td
                       key={cell.id}
-                      className="px-4 py-3 text-[var(--color-text-primary)] whitespace-nowrap"
+                      className="px-4 py-3 text-[var(--color-fg)] whitespace-nowrap"
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
@@ -141,24 +141,24 @@ export function DataTable({ columns, apiUrl, onRowClick }: DataTableProps) {
 
       {/* Pagination — only shown when there is more than one page */}
       <div className="flex items-center justify-between mt-4 text-sm">
-        <span className="text-[var(--color-text-muted)]">
+        <span className="text-[var(--color-comment)]">
           {loading ? '\u00A0' : `${total.toLocaleString()} total`}
         </span>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page <= 1 || loading}
-            className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-light)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="px-3 py-1.5 rounded-lg border border-[var(--color-current-line)] text-[var(--color-fg)] hover:text-[var(--color-fg)] hover:border-[var(--color-selection)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             ← Prev
           </button>
-          <span className="text-[var(--color-text-secondary)] px-2">
+          <span className="text-[var(--color-fg)] px-2">
             {loading ? '…' : `Page ${page} of ${totalPages || 1}`}
           </span>
           <button
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
             disabled={page >= totalPages || loading}
-            className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-light)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="px-3 py-1.5 rounded-lg border border-[var(--color-current-line)] text-[var(--color-fg)] hover:text-[var(--color-fg)] hover:border-[var(--color-selection)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             Next →
           </button>

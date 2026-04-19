@@ -13,9 +13,9 @@ const columns: ColumnDef<Row>[] = [
       if (!v) return '—';
       const daysLeft = Math.ceil((new Date(v).getTime() - Date.now()) / 86_400_000);
       const color =
-        daysLeft < 0 ? 'var(--color-status-danger)'
-        : daysLeft <= 90 ? 'var(--color-status-warn)'
-        : 'var(--color-text-secondary)';
+        daysLeft < 0 ? 'var(--color-fn-red)'
+        : daysLeft <= 90 ? 'var(--color-fn-orange)'
+        : 'var(--color-fg)';
       return <span style={{ color }}>{v}</span>;
     },
   },
@@ -23,7 +23,7 @@ const columns: ColumnDef<Row>[] = [
     accessorKey: 'status',
     header: 'Status',
     cell: ({ getValue }) => (
-      <span className="capitalize text-[var(--color-text-secondary)] text-xs">
+      <span className="capitalize text-[var(--color-fg)] text-xs">
         {String(getValue() ?? '—')}
       </span>
     ),
@@ -34,7 +34,7 @@ export default function PermitList() {
   const navigate = useNavigate();
   return (
     <div>
-      <h1 className="text-2xl font-bold text-[var(--color-text-primary)] mb-6">Permits</h1>
+      <h1 className="text-2xl font-bold text-[var(--color-fg)] mb-6">Permits</h1>
       <DataTable
         columns={columns}
         apiUrl="/api/permits"

@@ -1,58 +1,27 @@
 @import "tailwindcss";
-
-@theme {
-  /* Core palette — Dracula-inspired */
-  --color-bg-primary: #282A36;
-  --color-bg-secondary: #21222C;
-  --color-bg-card: #313545;
-  --color-bg-hover: #3B3F51;
-
-  /* Purple accent system */
-  --color-accent: #BD93F9;
-  --color-accent-light: #D6BCFA;
-  --color-accent-muted: #6C5B8A;
-
-  /* Text */
-  --color-text-primary: #F8F8F2;
-  --color-text-secondary: #BFBFB9;
-  --color-text-muted: #6272A4;
-
-  /* Status colors */
-  --color-status-ok: #50FA7B;
-  --color-status-warn: #F1FA8C;
-  --color-status-danger: #FF5555;
-  --color-status-info: #8BE9FD;
-
-  /* Borders */
-  --color-border: #44475A;
-  --color-border-light: #565972;
-}
+@import "./theme/theme.css";
 
 html, body, #root {
   height: 100%;
-  margin: 0;
-  padding: 0;
 }
 
 body {
-  background-color: var(--color-bg-primary);
-  color: var(--color-text-primary);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Scrollbar styling for dark theme */
+/* Scrollbar styling — tuned for Nótt/Dagr surface scale */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--color-bg-secondary);
+  background: var(--color-bg-dark);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border-light);
+  background: var(--color-selection);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-accent-muted);
+  background: var(--color-fn-purple);
 }

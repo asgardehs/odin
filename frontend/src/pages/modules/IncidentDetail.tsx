@@ -5,10 +5,10 @@ import { Field, Section } from '../../components/DetailSection';
 type IncidentRow = Record<string, unknown>;
 
 const SEVERITY_COLORS: Record<string, string> = {
-  fatal:    'var(--color-status-danger)',
-  serious:  'var(--color-status-warn)',
-  moderate: 'var(--color-status-info)',
-  minor:    'var(--color-status-ok)',
+  fatal:    'var(--color-fn-red)',
+  serious:  'var(--color-fn-orange)',
+  moderate: 'var(--color-fn-cyan)',
+  minor:    'var(--color-fn-green)',
 };
 
 export default function IncidentDetail() {
@@ -18,7 +18,7 @@ export default function IncidentDetail() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-12 text-[var(--color-text-muted)] text-sm">
+      <div className="flex items-center justify-center p-12 text-[var(--color-comment)] text-sm">
         Loading…
       </div>
     );
@@ -27,9 +27,9 @@ export default function IncidentDetail() {
   if (error || !data) {
     const notFound = error?.startsWith('404');
     return (
-      <div className="flex flex-col items-center gap-4 p-12 text-[var(--color-text-muted)]">
+      <div className="flex flex-col items-center gap-4 p-12 text-[var(--color-comment)]">
         <p className="text-sm">{notFound ? 'Incident not found.' : `Error: ${error}`}</p>
-        <button onClick={() => navigate('/incidents')} className="text-xs text-[var(--color-accent-light)] hover:underline">
+        <button onClick={() => navigate('/incidents')} className="text-xs text-[var(--color-purple)] hover:underline">
           ← Back to Incidents
         </button>
       </div>
@@ -37,18 +37,18 @@ export default function IncidentDetail() {
   }
 
   const severityKey = String(data.severity_code ?? '').toLowerCase();
-  const severityColor = SEVERITY_COLORS[severityKey] ?? 'var(--color-text-muted)';
+  const severityColor = SEVERITY_COLORS[severityKey] ?? 'var(--color-comment)';
 
   return (
     <div>
       <div className="flex items-center gap-4 mb-6">
         <button
           onClick={() => navigate('/incidents')}
-          className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] text-sm transition-colors"
+          className="text-[var(--color-comment)] hover:text-[var(--color-fg)] text-sm transition-colors"
         >
           ← Incidents
         </button>
-        <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">
+        <h1 className="text-2xl font-bold text-[var(--color-fg)]">
           {String(data.case_number ?? 'Incident')}
         </h1>
         {!!data.severity_code && (
@@ -78,10 +78,10 @@ export default function IncidentDetail() {
 
         <Section title="Description">
           <div className="col-span-3">
-            <dt className="text-xs text-[var(--color-text-muted)] uppercase tracking-wide mb-1">
+            <dt className="text-xs text-[var(--color-comment)] uppercase tracking-wide mb-1">
               Incident Description
             </dt>
-            <dd className="text-[var(--color-text-primary)] text-sm whitespace-pre-wrap">
+            <dd className="text-[var(--color-fg)] text-sm whitespace-pre-wrap">
               {String(data.incident_description ?? '—')}
             </dd>
           </div>
