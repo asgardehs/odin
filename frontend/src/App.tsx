@@ -14,6 +14,7 @@ import IncidentList from './pages/modules/IncidentList';
 import IncidentDetail from './pages/modules/IncidentDetail';
 import ChemicalList from './pages/modules/ChemicalList';
 import ChemicalDetail from './pages/modules/ChemicalDetail';
+import ChemicalForm from './pages/modules/ChemicalForm';
 import TrainingList from './pages/modules/TrainingList';
 import TrainingDetail from './pages/modules/TrainingDetail';
 import InspectionList from './pages/modules/InspectionList';
@@ -64,7 +65,9 @@ function AppRoutes() {
           <Route path="incidents/:id" element={<IncidentDetail />} />
 
           <Route path="chemicals" element={<ChemicalList />} />
+          <Route path="chemicals/new" element={<ChemicalForm />} />
           <Route path="chemicals/:id" element={<ChemicalDetail />} />
+          <Route path="chemicals/:id/edit" element={<ChemicalForm />} />
 
           <Route path="training" element={<TrainingList />} />
           <Route path="training/:id" element={<TrainingDetail />} />

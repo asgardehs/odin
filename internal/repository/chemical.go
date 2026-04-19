@@ -6,8 +6,9 @@ const chemicalModule = "chemicals"
 const chemicalTable = "chemicals"
 
 // ChemicalInput is the payload for creating or updating a chemical.
-// Covers the identification, GHS classification, regulatory flags,
-// and physical properties needed for EPCRA compliance.
+// Covers the identification, full GHS classification (physical / health /
+// environmental), physical properties, regulatory flags, and storage
+// handling data needed for EPCRA, SARA Title III, and TRI reporting.
 type ChemicalInput struct {
 	EstablishmentID int64   `json:"establishment_id"`
 	ProductName     string  `json:"product_name"`
@@ -16,21 +17,35 @@ type ChemicalInput struct {
 	PrimaryCAS      *string `json:"primary_cas_number,omitempty"`
 
 	// GHS classification
-	SignalWord *string `json:"signal_word,omitempty"`
+	SignalWord *string `json:"signal_word,omitempty"` // 'Danger', 'Warning', or NULL
 
 	// Physical hazards
-	IsFlammable      *int `json:"is_flammable,omitempty"`
-	IsOxidizer       *int `json:"is_oxidizer,omitempty"`
-	IsExplosive      *int `json:"is_explosive,omitempty"`
-	IsCorrosiveToMtl *int `json:"is_corrosive_to_metal,omitempty"`
-	IsGasUnderPress  *int `json:"is_gas_under_pressure,omitempty"`
+	IsFlammable       *int `json:"is_flammable,omitempty"`
+	IsOxidizer        *int `json:"is_oxidizer,omitempty"`
+	IsExplosive       *int `json:"is_explosive,omitempty"`
+	IsSelfReactive    *int `json:"is_self_reactive,omitempty"`
+	IsPyrophoric      *int `json:"is_pyrophoric,omitempty"`
+	IsSelfHeating     *int `json:"is_self_heating,omitempty"`
+	IsOrganicPeroxide *int `json:"is_organic_peroxide,omitempty"`
+	IsCorrosiveToMtl  *int `json:"is_corrosive_to_metal,omitempty"`
+	IsGasUnderPress   *int `json:"is_gas_under_pressure,omitempty"`
+	IsWaterReactive   *int `json:"is_water_reactive,omitempty"`
 
 	// Health hazards
-	IsAcuteToxic *int `json:"is_acute_toxic,omitempty"`
-	IsCarcinogen *int `json:"is_carcinogen,omitempty"`
-	IsSkinCorr   *int `json:"is_skin_corrosion,omitempty"`
-	IsEyeDamage  *int `json:"is_eye_damage,omitempty"`
-	IsRespSensit *int `json:"is_respiratory_sensitizer,omitempty"`
+	IsAcuteToxic        *int `json:"is_acute_toxic,omitempty"`
+	IsSkinCorr          *int `json:"is_skin_corrosion,omitempty"`
+	IsEyeDamage         *int `json:"is_eye_damage,omitempty"`
+	IsSkinSensitizer    *int `json:"is_skin_sensitizer,omitempty"`
+	IsRespSensit        *int `json:"is_respiratory_sensitizer,omitempty"`
+	IsGermCellMutagen   *int `json:"is_germ_cell_mutagen,omitempty"`
+	IsCarcinogen        *int `json:"is_carcinogen,omitempty"`
+	IsReproductiveToxin *int `json:"is_reproductive_toxin,omitempty"`
+	IsTargetOrganSingle *int `json:"is_target_organ_single,omitempty"`
+	IsTargetOrganRepeat *int `json:"is_target_organ_repeat,omitempty"`
+	IsAspirationHazard  *int `json:"is_aspiration_hazard,omitempty"`
+
+	// Environmental hazards
+	IsAquaticToxic *int `json:"is_aquatic_toxic,omitempty"`
 
 	// Regulatory
 	IsEHS      *int     `json:"is_ehs,omitempty"`
@@ -41,10 +56,15 @@ type ChemicalInput struct {
 	IsPBT      *int     `json:"is_pbt,omitempty"`
 
 	// Physical properties
-	PhysicalState *string  `json:"physical_state,omitempty"`
-	FlashPointF   *float64 `json:"flash_point_f,omitempty"`
+	PhysicalState   *string  `json:"physical_state,omitempty"` // 'solid', 'liquid', 'gas'
+	SpecificGravity *float64 `json:"specific_gravity,omitempty"`
+	VaporPressure   *float64 `json:"vapor_pressure_mmhg,omitempty"`
+	FlashPointF     *float64 `json:"flash_point_f,omitempty"`
+	PH              *float64 `json:"ph,omitempty"`
+	Appearance      *string  `json:"appearance,omitempty"`
+	Odor            *string  `json:"odor,omitempty"`
 
-	// Storage
+	// Storage and handling
 	StorageRequirements   *string `json:"storage_requirements,omitempty"`
 	IncompatibleMaterials *string `json:"incompatible_materials,omitempty"`
 	PPERequired           *string `json:"ppe_required,omitempty"`
@@ -55,24 +75,36 @@ func (r *Repo) CreateChemical(user string, in ChemicalInput) (int64, error) {
 		fmt.Sprintf("Created chemical: %s", in.ProductName),
 		`INSERT INTO chemicals (establishment_id, product_name, manufacturer,
 		        manufacturer_phone, primary_cas_number, signal_word,
-		        is_flammable, is_oxidizer, is_explosive,
-		        is_corrosive_to_metal, is_gas_under_pressure,
-		        is_acute_toxic, is_carcinogen, is_skin_corrosion,
-		        is_eye_damage, is_respiratory_sensitizer,
+		        is_flammable, is_oxidizer, is_explosive, is_self_reactive,
+		        is_pyrophoric, is_self_heating, is_organic_peroxide,
+		        is_corrosive_to_metal, is_gas_under_pressure, is_water_reactive,
+		        is_acute_toxic, is_skin_corrosion, is_eye_damage,
+		        is_skin_sensitizer, is_respiratory_sensitizer,
+		        is_germ_cell_mutagen, is_carcinogen, is_reproductive_toxin,
+		        is_target_organ_single, is_target_organ_repeat,
+		        is_aspiration_hazard, is_aquatic_toxic,
 		        is_ehs, ehs_tpq_lbs, ehs_rq_lbs,
 		        is_sara_313, sara_313_category, is_pbt,
-		        physical_state, flash_point_f,
+		        physical_state, specific_gravity, vapor_pressure_mmhg,
+		        flash_point_f, ph, appearance, odor,
 		        storage_requirements, incompatible_materials, ppe_required)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+		         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+		         ?, ?, ?)`,
 		in.EstablishmentID, in.ProductName, in.Manufacturer,
 		in.ManufacturerPh, in.PrimaryCAS, in.SignalWord,
-		in.IsFlammable, in.IsOxidizer, in.IsExplosive,
-		in.IsCorrosiveToMtl, in.IsGasUnderPress,
-		in.IsAcuteToxic, in.IsCarcinogen, in.IsSkinCorr,
-		in.IsEyeDamage, in.IsRespSensit,
+		in.IsFlammable, in.IsOxidizer, in.IsExplosive, in.IsSelfReactive,
+		in.IsPyrophoric, in.IsSelfHeating, in.IsOrganicPeroxide,
+		in.IsCorrosiveToMtl, in.IsGasUnderPress, in.IsWaterReactive,
+		in.IsAcuteToxic, in.IsSkinCorr, in.IsEyeDamage,
+		in.IsSkinSensitizer, in.IsRespSensit,
+		in.IsGermCellMutagen, in.IsCarcinogen, in.IsReproductiveToxin,
+		in.IsTargetOrganSingle, in.IsTargetOrganRepeat,
+		in.IsAspirationHazard, in.IsAquaticToxic,
 		in.IsEHS, in.EhsTPQ, in.EhsRQ,
 		in.IsSara313, in.Sara313Cat, in.IsPBT,
-		in.PhysicalState, in.FlashPointF,
+		in.PhysicalState, in.SpecificGravity, in.VaporPressure,
+		in.FlashPointF, in.PH, in.Appearance, in.Odor,
 		in.StorageRequirements, in.IncompatibleMaterials, in.PPERequired,
 	)
 }
@@ -84,24 +116,38 @@ func (r *Repo) UpdateChemical(user string, id int64, in ChemicalInput) error {
 		        product_name = ?, manufacturer = ?, manufacturer_phone = ?,
 		        primary_cas_number = ?, signal_word = ?,
 		        is_flammable = ?, is_oxidizer = ?, is_explosive = ?,
-		        is_corrosive_to_metal = ?, is_gas_under_pressure = ?,
-		        is_acute_toxic = ?, is_carcinogen = ?, is_skin_corrosion = ?,
-		        is_eye_damage = ?, is_respiratory_sensitizer = ?,
+		        is_self_reactive = ?, is_pyrophoric = ?, is_self_heating = ?,
+		        is_organic_peroxide = ?, is_corrosive_to_metal = ?,
+		        is_gas_under_pressure = ?, is_water_reactive = ?,
+		        is_acute_toxic = ?, is_skin_corrosion = ?, is_eye_damage = ?,
+		        is_skin_sensitizer = ?, is_respiratory_sensitizer = ?,
+		        is_germ_cell_mutagen = ?, is_carcinogen = ?,
+		        is_reproductive_toxin = ?, is_target_organ_single = ?,
+		        is_target_organ_repeat = ?, is_aspiration_hazard = ?,
+		        is_aquatic_toxic = ?,
 		        is_ehs = ?, ehs_tpq_lbs = ?, ehs_rq_lbs = ?,
 		        is_sara_313 = ?, sara_313_category = ?, is_pbt = ?,
-		        physical_state = ?, flash_point_f = ?,
+		        physical_state = ?, specific_gravity = ?, vapor_pressure_mmhg = ?,
+		        flash_point_f = ?, ph = ?, appearance = ?, odor = ?,
 		        storage_requirements = ?, incompatible_materials = ?, ppe_required = ?,
 		        updated_at = datetime('now')
 		 WHERE id = ?`,
 		in.ProductName, in.Manufacturer, in.ManufacturerPh,
 		in.PrimaryCAS, in.SignalWord,
 		in.IsFlammable, in.IsOxidizer, in.IsExplosive,
-		in.IsCorrosiveToMtl, in.IsGasUnderPress,
-		in.IsAcuteToxic, in.IsCarcinogen, in.IsSkinCorr,
-		in.IsEyeDamage, in.IsRespSensit,
+		in.IsSelfReactive, in.IsPyrophoric, in.IsSelfHeating,
+		in.IsOrganicPeroxide, in.IsCorrosiveToMtl,
+		in.IsGasUnderPress, in.IsWaterReactive,
+		in.IsAcuteToxic, in.IsSkinCorr, in.IsEyeDamage,
+		in.IsSkinSensitizer, in.IsRespSensit,
+		in.IsGermCellMutagen, in.IsCarcinogen,
+		in.IsReproductiveToxin, in.IsTargetOrganSingle,
+		in.IsTargetOrganRepeat, in.IsAspirationHazard,
+		in.IsAquaticToxic,
 		in.IsEHS, in.EhsTPQ, in.EhsRQ,
 		in.IsSara313, in.Sara313Cat, in.IsPBT,
-		in.PhysicalState, in.FlashPointF,
+		in.PhysicalState, in.SpecificGravity, in.VaporPressure,
+		in.FlashPointF, in.PH, in.Appearance, in.Odor,
 		in.StorageRequirements, in.IncompatibleMaterials, in.PPERequired,
 		id,
 	)
