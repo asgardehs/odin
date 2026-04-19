@@ -283,6 +283,22 @@ func (s *Server) apiRoutes() {
 		`SELECT * FROM ppe_assignments WHERE id = ?`,
 	)
 
+	s.entityRoutes("/api/ppe/inspections", "PPE inspection",
+		`SELECT id, ppe_item_id, inspection_date, inspected_by_employee_id,
+		        passed, condition, next_inspection_due, removed_from_service, created_at
+		 FROM ppe_inspections ORDER BY inspection_date DESC LIMIT ? OFFSET ?`,
+		`SELECT COUNT(*) FROM ppe_inspections`,
+		`SELECT * FROM ppe_inspections WHERE id = ?`,
+	)
+
+	s.entityRoutes("/api/ppe/types", "PPE type",
+		`SELECT id, type_code, type_name, requires_fit_test
+		 FROM ppe_types ORDER BY type_code LIMIT ? OFFSET ?`,
+		`SELECT COUNT(*) FROM ppe_types`,
+		`SELECT * FROM ppe_types WHERE id = ?`,
+		"type_code", "type_name",
+	)
+
 	// -- Dashboard summary --
 	s.mux.HandleFunc("GET /api/dashboard/counts", s.handleDashboardCounts)
 }
