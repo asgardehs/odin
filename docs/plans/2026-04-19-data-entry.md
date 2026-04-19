@@ -141,6 +141,7 @@ Not in this plan's scope — come back when upstream work clears.
 - **Audits.** Deferred pending feedback from ISO auditors. Backend is complete; frontend skipped for now. When the auditor feedback lands, audits becomes a full-module add (list/detail/create/edit page + findings modal + sidebar icon).
 - **Emission Units.** Deferred pending legal review to confirm all required fields are captured. Backend is currently GET-only by design. When writes are added, the module gets create/edit UI in the pattern of the other 11.
 - **Chemical Inventory snapshot modal.** Originally planned as a sub-record on chemical detail. Deferred because the whole dependency chain is missing: no repo Create/Delete methods, no POST route, and no seeded `storage_locations` (required FK). Lift: add `storage_locations` as its own primary module first (list/detail/create/edit), seed some, then come back and add the inventory modal. Backend GET for `/api/chemical-inventory` already exists so list-only views can ship earlier if needed.
+- **Inspection Findings modal.** Originally planned as a sub-record on inspection detail. Backend POST/close/DELETE for `/api/inspection-findings` already exists and works, but the modal UI is deferred to keep Phase 2 focused on primary records. Small lift when we come back — just a Modal + FormField form calling the existing endpoints.
 
 ## Decisions locked in
 

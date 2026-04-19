@@ -194,6 +194,14 @@ func (s *Server) apiRoutes() {
 		"inspection_number",
 	)
 
+	s.entityRoutes("/api/inspection-types", "inspection type",
+		`SELECT id, type_code, type_name, default_frequency, is_active
+		 FROM inspection_types ORDER BY type_code LIMIT ? OFFSET ?`,
+		`SELECT COUNT(*) FROM inspection_types`,
+		`SELECT * FROM inspection_types WHERE id = ?`,
+		"type_code", "type_name",
+	)
+
 	s.entityRoutes("/api/audits", "audit",
 		`SELECT id, establishment_id, audit_number, audit_title, audit_type,
 		        standard_id, scheduled_start_date, actual_start_date,
