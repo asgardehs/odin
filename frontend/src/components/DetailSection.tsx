@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { formatTimestamp, formatDate, looksLikeTimestamp, looksLikeDate } from '../utils/date';
 
 /** A labelled key-value field inside a detail section. */
 export function Field({ label, value }: { label: string; value: unknown }) {
@@ -8,6 +9,12 @@ export function Field({ label, value }: { label: string; value: unknown }) {
   } else if (typeof value === 'number' && (value === 0 || value === 1) && label.toLowerCase().includes('active')) {
     // SQLite booleans stored as 0/1 for is_active-style fields
     display = value ? 'Yes' : 'No';
+  } else if (looksLikeTimestamp(value)) {
+    // UTC datetime from SQLite → render in user's locale + timezone.
+    display = formatTimestamp(value as string);
+  } else if (looksLikeDate(value)) {
+    // Date-only (no time) → locale-formatted date.
+    display = formatDate(value as string);
   } else {
     display = String(value);
   }

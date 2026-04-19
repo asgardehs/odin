@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { api } from '../../api';
 import { StatusBadge } from '../../components/StatusBadge';
+import { formatTimestamp } from '../../utils/date';
 
 interface AdminUser {
   id: number;
@@ -73,7 +74,7 @@ export default function UsersList() {
                 <td className="px-4 py-3 text-[var(--color-fg)]">{u.display_name}</td>
                 <td className="px-4 py-3"><StatusBadge status={u.role} /></td>
                 <td className="px-4 py-3"><StatusBadge status={u.is_active ? 'active' : 'inactive'} /></td>
-                <td className="px-4 py-3 text-[var(--color-comment)]">{u.last_login_at || '—'}</td>
+                <td className="px-4 py-3 text-[var(--color-comment)]">{u.last_login_at ? formatTimestamp(u.last_login_at) : '—'}</td>
               </tr>
             ))}
           </tbody>
