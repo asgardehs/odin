@@ -1,3 +1,22 @@
+# Code of Conduct
+
+## Why Asgard Adopts This Code
+
+Asgard EHS is built for a profession where the ability to raise concerns,
+challenge bad decisions, and report problems without fear of retaliation is not
+a nicety — it is the mechanism by which people go home safely at the end of a
+shift. A project that serves environmental health and safety professionals has
+no business maintaining a community that fails to hold itself to the same
+standard.
+
+We adopt the Contributor Covenant 3.0, unmodified in its substance, because it
+is a widely recognized and thoughtfully developed standard. The only additions
+in this document are the paragraph you are reading now, the reporting contact,
+and the notes on scope and moderation. The expectations below are the
+Covenant's; we commit to them.
+
+---
+
 # Contributor Covenant 3.0 Code of Conduct
 
 ## Our Pledge
@@ -72,7 +91,12 @@ and this Code of Conduct reinforces encouraged behaviors and norms that can help
 avoid conflicts and minimize harm.
 
 When an incident does occur, it is important to report it promptly. To report a
-possible violation, email muninn.developer@protonmail.com
+possible violation, email **muninn.developer@protonmail.com**. Reports are read
+and handled by the project's Community Moderators (see
+[Moderation](#moderation) below). Include as much context as you are
+comfortable sharing: what happened, where it happened, who was involved, and
+any links or screenshots that help document the incident. Reports are kept
+confidential to the extent possible while carrying out a fair investigation.
 
 Community Moderators take reports of violations seriously and will make every
 effort to respond in a timely manner. They will investigate all reports of code
@@ -141,6 +165,34 @@ an individual is officially representing the community in public or other
 spaces. Examples of representing our community include using an official email
 address, posting via an official social media account, or acting as an appointed
 representative at an online or offline event.
+
+For the Asgard EHS project, community spaces include (but are not limited to):
+
+- All repositories under the [asgardehs](https://github.com/asgardehs) GitHub
+  organization — including issues, pull requests, discussions, commit messages,
+  code comments, and review threads.
+- The project documentation site and any content hosted under
+  `asgardehs.github.io`.
+- Correspondence with the project through the reporting or developer email
+  address.
+- Any future community channels (chat servers, mailing lists, forums) that the
+  project formally adopts.
+
+## Moderation
+
+Asgard EHS is currently a solo-maintained project. The role of Community
+Moderator is held by the project maintainer, Adam Bick
+(muninn.developer@protonmail.com). Additional moderators will be added as the
+project grows, and this section will be updated when that happens.
+
+A single maintainer receiving reports about their own project is an inherent
+limitation, and this document acknowledges it openly rather than papering over
+it. If you believe the maintainer is the party in violation, or that a report
+cannot be handled fairly through the project's normal channels, you may instead
+raise the matter publicly through a GitHub issue, or reach out to the
+Contributor Covenant stewards at the
+[Organization for Ethical Source](https://ethicalsource.dev/) for external
+guidance.
 
 ## Attribution
 
