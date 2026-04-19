@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/asgardehs/odin/internal/database"
 )
@@ -21,11 +22,25 @@ func writeError(w http.ResponseWriter, msg string, code int) {
 }
 
 // entityRoutes registers standard list + get-by-ID routes for a table.
-// List supports pagination (?page=N&per_page=N).
-func (s *Server) entityRoutes(pattern, label, listSQL, countSQL, getSQL string) {
+// List supports pagination (?page=N&per_page=N) and, when searchCols is
+// non-empty, a simple ?q= full-text filter that LIKEs against each
+// listed column (joined with OR).
+func (s *Server) entityRoutes(pattern, label, listSQL, countSQL, getSQL string, searchCols ...string) {
 	s.mux.HandleFunc("GET "+pattern, func(w http.ResponseWriter, r *http.Request) {
 		p := database.PageFromRequest(r)
-		result, err := s.db.QueryPaged(p, countSQL, listSQL)
+
+		activeListSQL := listSQL
+		activeCountSQL := countSQL
+		var args []any
+
+		if q := strings.TrimSpace(r.URL.Query().Get("q")); q != "" && len(searchCols) > 0 {
+			where, qArgs := buildSearchWhere(searchCols, q)
+			activeListSQL = injectWhere(listSQL, where)
+			activeCountSQL = countSQL + " " + where
+			args = qArgs
+		}
+
+		result, err := s.db.QueryPaged(p, activeCountSQL, activeListSQL, args...)
 		if err != nil {
 			writeError(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -48,6 +63,29 @@ func (s *Server) entityRoutes(pattern, label, listSQL, countSQL, getSQL string) 
 	})
 }
 
+// buildSearchWhere returns a SQL WHERE clause that LIKEs each column
+// against the query, joined with OR, plus the bind arguments.
+func buildSearchWhere(cols []string, q string) (string, []any) {
+	pattern := "%" + q + "%"
+	parts := make([]string, 0, len(cols))
+	args := make([]any, 0, len(cols))
+	for _, c := range cols {
+		parts = append(parts, c+" LIKE ?")
+		args = append(args, pattern)
+	}
+	return "WHERE (" + strings.Join(parts, " OR ") + ")", args
+}
+
+// injectWhere inserts a WHERE clause immediately before " ORDER BY "
+// in a list SQL statement. Falls back to appending if ORDER BY is absent.
+func injectWhere(sql, where string) string {
+	idx := strings.Index(sql, " ORDER BY ")
+	if idx == -1 {
+		return sql + " " + where
+	}
+	return sql[:idx] + " " + where + sql[idx:]
+}
+
 // apiRoutes registers all data API routes.
 func (s *Server) apiRoutes() {
 	if s.db == nil {
@@ -62,6 +100,7 @@ func (s *Server) apiRoutes() {
 		 FROM establishments ORDER BY name LIMIT ? OFFSET ?`,
 		`SELECT COUNT(*) FROM establishments`,
 		`SELECT * FROM establishments WHERE id = ?`,
+		"name", "city", "naics_code",
 	)
 
 	s.entityRoutes("/api/employees", "employee",
@@ -70,6 +109,7 @@ func (s *Server) apiRoutes() {
 		 FROM employees ORDER BY last_name, first_name LIMIT ? OFFSET ?`,
 		`SELECT COUNT(*) FROM employees`,
 		`SELECT * FROM employees WHERE id = ?`,
+		"first_name", "last_name", "employee_number",
 	)
 
 	s.entityRoutes("/api/incidents", "incident",
@@ -79,6 +119,7 @@ func (s *Server) apiRoutes() {
 		 FROM incidents ORDER BY incident_date DESC LIMIT ? OFFSET ?`,
 		`SELECT COUNT(*) FROM incidents`,
 		`SELECT * FROM incidents WHERE id = ?`,
+		"case_number", "incident_description", "location_description",
 	)
 
 	s.entityRoutes("/api/corrective-actions", "corrective action",
@@ -99,6 +140,7 @@ func (s *Server) apiRoutes() {
 		 FROM chemicals ORDER BY product_name LIMIT ? OFFSET ?`,
 		`SELECT COUNT(*) FROM chemicals`,
 		`SELECT * FROM chemicals WHERE id = ?`,
+		"product_name", "primary_cas_number", "manufacturer",
 	)
 
 	s.entityRoutes("/api/chemical-inventory", "chemical inventory",
@@ -117,6 +159,7 @@ func (s *Server) apiRoutes() {
 		 FROM air_emission_units ORDER BY unit_name LIMIT ? OFFSET ?`,
 		`SELECT COUNT(*) FROM air_emission_units`,
 		`SELECT * FROM air_emission_units WHERE id = ?`,
+		"unit_name", "scc_code",
 	)
 
 	// -- Training --
@@ -128,6 +171,7 @@ func (s *Server) apiRoutes() {
 		 FROM training_courses ORDER BY course_code LIMIT ? OFFSET ?`,
 		`SELECT COUNT(*) FROM training_courses`,
 		`SELECT * FROM training_courses WHERE id = ?`,
+		"course_code", "course_name",
 	)
 
 	s.entityRoutes("/api/training/completions", "training completion",
@@ -147,6 +191,7 @@ func (s *Server) apiRoutes() {
 		 FROM inspections ORDER BY inspection_date DESC LIMIT ? OFFSET ?`,
 		`SELECT COUNT(*) FROM inspections`,
 		`SELECT * FROM inspections WHERE id = ?`,
+		"inspection_number",
 	)
 
 	s.entityRoutes("/api/audits", "audit",
@@ -156,6 +201,7 @@ func (s *Server) apiRoutes() {
 		 FROM audits ORDER BY scheduled_start_date DESC LIMIT ? OFFSET ?`,
 		`SELECT COUNT(*) FROM audits`,
 		`SELECT * FROM audits WHERE id = ?`,
+		"audit_number", "audit_title",
 	)
 
 	// -- Permits & Licenses --
@@ -167,6 +213,7 @@ func (s *Server) apiRoutes() {
 		 FROM permits ORDER BY expiration_date LIMIT ? OFFSET ?`,
 		`SELECT COUNT(*) FROM permits`,
 		`SELECT * FROM permits WHERE id = ?`,
+		"permit_number", "permit_name",
 	)
 
 	// -- Industrial Waste --
@@ -178,6 +225,7 @@ func (s *Server) apiRoutes() {
 		 FROM waste_streams ORDER BY stream_name LIMIT ? OFFSET ?`,
 		`SELECT COUNT(*) FROM waste_streams`,
 		`SELECT * FROM waste_streams WHERE id = ?`,
+		"stream_code", "stream_name",
 	)
 
 	// -- PPE --
@@ -189,6 +237,7 @@ func (s *Server) apiRoutes() {
 		 FROM ppe_items ORDER BY created_at DESC LIMIT ? OFFSET ?`,
 		`SELECT COUNT(*) FROM ppe_items`,
 		`SELECT * FROM ppe_items WHERE id = ?`,
+		"serial_number", "asset_tag", "model",
 	)
 
 	s.entityRoutes("/api/ppe/assignments", "PPE assignment",

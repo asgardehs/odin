@@ -101,6 +101,72 @@ func newTestServerWithDB(t *testing.T) *testContext {
 	return &testContext{srv: srv, token: token}
 }
 
+// TestListSearchFilter verifies that ?q= filters results on configured
+// search columns. Creates three employees and asserts that matching
+// last_name and employee_number narrow the result set.
+func TestListSearchFilter(t *testing.T) {
+	tc := newTestServerWithDB(t)
+
+	// Seed three employees; none match "zebra", two match "son".
+	seedEmp := func(empNum, first, last string) {
+		body := bytes.NewBufferString(`{"establishment_id":1,"employee_number":"` + empNum +
+			`","first_name":"` + first + `","last_name":"` + last + `"}`)
+		req := httptest.NewRequest("POST", "/api/employees", body)
+		tc.authRequest(req)
+		w := httptest.NewRecorder()
+		tc.srv.mux.ServeHTTP(w, req)
+		if w.Code != http.StatusCreated {
+			t.Fatalf("seed %s %s: %d; %s", first, last, w.Code, w.Body.String())
+		}
+	}
+	seedEmp("E001", "Ada", "Anderson")
+	seedEmp("E002", "Ben", "Johnson")
+	seedEmp("E003", "Cara", "Jefferson")
+
+	cases := []struct {
+		q    string
+		want int
+	}{
+		{"zebra", 0},
+		{"son", 3},  // Anderson + Johnson + Jefferson all contain "son"
+		{"John", 1}, // Johnson only
+		{"Ada", 1},  // first_name match
+		{"E002", 1}, // employee_number match
+	}
+	for _, tc2 := range cases {
+		t.Run(tc2.q, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "/api/employees?q="+tc2.q, nil)
+			w := httptest.NewRecorder()
+			tc.srv.mux.ServeHTTP(w, req)
+			if w.Code != http.StatusOK {
+				t.Fatalf("GET ?q=%s = %d; %s", tc2.q, w.Code, w.Body.String())
+			}
+			var result database.PagedResult
+			json.NewDecoder(w.Body).Decode(&result)
+			if int(result.Total) != tc2.want {
+				t.Errorf("?q=%s total = %d, want %d", tc2.q, result.Total, tc2.want)
+			}
+			if len(result.Data) != tc2.want {
+				t.Errorf("?q=%s data len = %d, want %d", tc2.q, len(result.Data), tc2.want)
+			}
+		})
+	}
+}
+
+// TestListSearchIgnoredWithoutSearchCols verifies that ?q= is a no-op
+// on endpoints that weren't registered with search columns.
+func TestListSearchIgnoredWithoutSearchCols(t *testing.T) {
+	tc := newTestServerWithDB(t)
+
+	// chemical-inventory has no search cols configured.
+	req := httptest.NewRequest("GET", "/api/chemical-inventory?q=anything", nil)
+	w := httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET chemical-inventory?q=anything = %d; %s", w.Code, w.Body.String())
+	}
+}
+
 // TestListEndpointsReturn200 verifies all list endpoints respond with
 // valid paginated JSON, even when tables are empty.
 func TestListEndpointsReturn200(t *testing.T) {
