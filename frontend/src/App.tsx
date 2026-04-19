@@ -28,6 +28,9 @@ import PermitForm from './pages/modules/PermitForm';
 import WasteList from './pages/modules/WasteList';
 import WasteDetail from './pages/modules/WasteDetail';
 import WasteForm from './pages/modules/WasteForm';
+import StorageLocationList from './pages/modules/StorageLocationList';
+import StorageLocationDetail from './pages/modules/StorageLocationDetail';
+import StorageLocationForm from './pages/modules/StorageLocationForm';
 import PPEList from './pages/modules/PPEList';
 import PPEDetail from './pages/modules/PPEDetail';
 import PPEForm from './pages/modules/PPEForm';
@@ -101,6 +104,11 @@ function AppRoutes() {
           <Route path="ppe/new" element={<PPEForm />} />
           <Route path="ppe/:id" element={<PPEDetail />} />
           <Route path="ppe/:id/edit" element={<PPEForm />} />
+
+          <Route path="storage-locations" element={<StorageLocationList />} />
+          <Route path="storage-locations/new" element={<StorageLocationForm />} />
+          <Route path="storage-locations/:id" element={<StorageLocationDetail />} />
+          <Route path="storage-locations/:id/edit" element={<StorageLocationForm />} />
 
           <Route path="account" element={<Account />} />
 

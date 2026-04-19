@@ -14,6 +14,7 @@ const navItems = [
   { to: '/permits',       label: 'Permits',      icon: '📄' },
   { to: '/waste',         label: 'Waste',        icon: '♻' },
   { to: '/ppe',           label: 'PPE',          icon: '🦺' },
+  { to: '/storage-locations', label: 'Storage',  icon: '📦' },
 ];
 
 const adminNavItems = [

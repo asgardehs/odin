@@ -144,11 +144,21 @@ func (s *Server) apiRoutes() {
 	)
 
 	s.entityRoutes("/api/chemical-inventory", "chemical inventory",
-		`SELECT id, chemical_id, storage_location_id, container_type,
-		        quantity, unit, snapshot_date, snapshot_type
+		`SELECT id, chemical_id, storage_location_id, container_type, container_count,
+		        quantity, unit, snapshot_date, snapshot_type, created_at
 		 FROM chemical_inventory ORDER BY snapshot_date DESC LIMIT ? OFFSET ?`,
 		`SELECT COUNT(*) FROM chemical_inventory`,
 		`SELECT * FROM chemical_inventory WHERE id = ?`,
+	)
+
+	s.entityRoutes("/api/storage-locations", "storage location",
+		`SELECT id, establishment_id, building, room, area,
+		        grid_reference, is_indoor, storage_pressure, storage_temperature,
+		        container_types, max_capacity_gallons, is_active, created_at
+		 FROM storage_locations ORDER BY building, room, area LIMIT ? OFFSET ?`,
+		`SELECT COUNT(*) FROM storage_locations`,
+		`SELECT * FROM storage_locations WHERE id = ?`,
+		"building", "room", "area",
 	)
 
 	// -- Module B: Title V / CAA --
@@ -208,6 +218,16 @@ func (s *Server) apiRoutes() {
 		`SELECT COUNT(*) FROM inspection_types`,
 		`SELECT * FROM inspection_types WHERE id = ?`,
 		"type_code", "type_name",
+	)
+
+	s.entityRoutes("/api/inspection-findings", "inspection finding",
+		`SELECT id, inspection_id, finding_number, finding_type, severity,
+		        finding_description, location, regulatory_citation,
+		        immediate_action, status, closed_date, corrective_action_id,
+		        incident_id, created_at
+		 FROM inspection_findings ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+		`SELECT COUNT(*) FROM inspection_findings`,
+		`SELECT * FROM inspection_findings WHERE id = ?`,
 	)
 
 	s.entityRoutes("/api/audits", "audit",

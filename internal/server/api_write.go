@@ -405,6 +405,57 @@ func (s *Server) writeRoutes() {
 	))
 
 	// -- Waste Streams --
+	// -- Chemical Inventory (sub-record on chemical detail) --
+	s.mux.HandleFunc("POST /api/chemical-inventory", s.handleCreate(
+		func(user string, body []byte) (int64, error) {
+			var in repository.ChemicalInventoryInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return 0, err
+			}
+			return s.repo.CreateChemicalInventory(user, in)
+		},
+	))
+	s.mux.HandleFunc("DELETE /api/chemical-inventory/{id}", s.handleDelete(
+		func(user string, id int64) error {
+			return s.repo.DeleteChemicalInventory(user, id)
+		},
+	))
+
+	// -- Storage Locations --
+	s.mux.HandleFunc("POST /api/storage-locations", s.handleCreate(
+		func(user string, body []byte) (int64, error) {
+			var in repository.StorageLocationInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return 0, err
+			}
+			return s.repo.CreateStorageLocation(user, in)
+		},
+	))
+	s.mux.HandleFunc("PUT /api/storage-locations/{id}", s.handleUpdate(
+		func(user string, id int64, body []byte) error {
+			var in repository.StorageLocationInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return err
+			}
+			return s.repo.UpdateStorageLocation(user, id, in)
+		},
+	))
+	s.mux.HandleFunc("POST /api/storage-locations/{id}/deactivate", s.handleAction(
+		func(user string, id int64, _ []byte) error {
+			return s.repo.DeactivateStorageLocation(user, id)
+		},
+	))
+	s.mux.HandleFunc("POST /api/storage-locations/{id}/reactivate", s.handleAction(
+		func(user string, id int64, _ []byte) error {
+			return s.repo.ReactivateStorageLocation(user, id)
+		},
+	))
+	s.mux.HandleFunc("DELETE /api/storage-locations/{id}", s.handleDelete(
+		func(user string, id int64) error {
+			return s.repo.DeleteStorageLocation(user, id)
+		},
+	))
+
 	s.mux.HandleFunc("POST /api/waste-streams", s.handleCreate(
 		func(user string, body []byte) (int64, error) {
 			var in repository.WasteStreamInput

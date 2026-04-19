@@ -1,14 +1,201 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
+import { api } from '../../api';
 import { useApi } from '../../hooks/useApi';
 import { Field, Section } from '../../components/DetailSection';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Modal } from '../../components/Modal';
 import { FormField } from '../../components/forms/FormField';
+import { EntitySelector } from '../../components/forms/EntitySelector';
 import { useEntityMutation } from '../../hooks/useEntityMutation';
 import { useAuth } from '../../context/AuthContext';
+import { formatDate } from '../../utils/date';
 
 type ChemicalRow = Record<string, unknown>;
+type Row = Record<string, unknown>;
+
+interface PagedResult<T> { data: T[]; total: number; }
+
+const snapshotTypeOptions = [
+  { value: 'manual', label: 'Manual' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'quarterly', label: 'Quarterly' },
+  { value: 'annual', label: 'Annual' },
+  { value: 'tier2', label: 'Tier II' },
+];
+
+const unitOptions = [
+  { value: 'lbs', label: 'lbs' },
+  { value: 'kg', label: 'kg' },
+  { value: 'gallons', label: 'gallons' },
+  { value: 'liters', label: 'liters' },
+];
+
+// ============ Inventory modal ============
+
+function InventoryModal({
+  chemicalId, open, onClose, onSaved,
+}: {
+  chemicalId: number;
+  open: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [storageLocationId, setStorageLocationId] = useState<number | null>(null);
+  const [snapshotDate, setSnapshotDate] = useState('');
+  const [snapshotType, setSnapshotType] = useState('manual');
+  const [quantity, setQuantity] = useState('');
+  const [unit, setUnit] = useState('lbs');
+  const [containerType, setContainerType] = useState('');
+  const [containerCount, setContainerCount] = useState('');
+  const [maxContainerSize, setMaxContainerSize] = useState('');
+  const [maxContainerSizeUnit, setMaxContainerSizeUnit] = useState('');
+  const [notes, setNotes] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const { mutate, loading } = useEntityMutation();
+
+  function reset() {
+    setStorageLocationId(null);
+    setSnapshotDate('');
+    setSnapshotType('manual');
+    setQuantity('');
+    setUnit('lbs');
+    setContainerType('');
+    setContainerCount('');
+    setMaxContainerSize('');
+    setMaxContainerSizeUnit('');
+    setNotes('');
+    setErr(null);
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setErr(null);
+    if (storageLocationId == null) { setErr('Storage location is required.'); return; }
+    if (!snapshotDate) { setErr('Snapshot date is required.'); return; }
+    if (quantity.trim() === '') { setErr('Quantity is required.'); return; }
+    const qty = parseFloat(quantity);
+    if (Number.isNaN(qty)) { setErr('Quantity must be a number.'); return; }
+    try {
+      await mutate('POST', '/api/chemical-inventory', {
+        chemical_id: chemicalId,
+        storage_location_id: storageLocationId,
+        snapshot_date: snapshotDate,
+        snapshot_type: snapshotType,
+        quantity: qty,
+        unit,
+        container_type: containerType.trim() || null,
+        container_count: containerCount.trim() === '' ? null : parseInt(containerCount, 10),
+        max_container_size: maxContainerSize.trim() === '' ? null : parseFloat(maxContainerSize),
+        max_container_size_unit: maxContainerSizeUnit.trim() || null,
+        notes: notes.trim() || null,
+      });
+      reset();
+      onSaved();
+      onClose();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Failed to save');
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={() => { reset(); onClose(); }} title="Record inventory snapshot" size="lg">
+      {err && (
+        <div className="rounded-lg bg-[var(--color-fn-red)]/10 border border-[var(--color-fn-red)]/30 text-[var(--color-fn-red)] px-4 py-2.5 mb-4 text-sm">
+          {err}
+        </div>
+      )}
+      <form onSubmit={submit} className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs text-[var(--color-fg)]">
+              Storage Location<span className="text-[var(--color-fn-red)] ml-0.5">*</span>
+            </label>
+            <EntitySelector
+              entity="storage-locations"
+              value={storageLocationId}
+              onChange={setStorageLocationId}
+              renderLabel={row => {
+                const parts = [row.building, row.room, row.area].filter(Boolean).map(String);
+                return parts.join(' / ') || `Location ${row.id}`;
+              }}
+              placeholder="Select a storage location..."
+              required
+            />
+          </div>
+          <FormField type="date" label="Snapshot Date" required value={snapshotDate} onChange={setSnapshotDate} />
+          <FormField type="select" label="Snapshot Type" value={snapshotType} onChange={setSnapshotType} options={snapshotTypeOptions} />
+          <div className="grid grid-cols-2 gap-2">
+            <FormField type="number" label="Quantity" required value={quantity} onChange={setQuantity} />
+            <FormField type="select" label="Unit" value={unit} onChange={setUnit} options={unitOptions} />
+          </div>
+          <FormField label="Container Type" value={containerType} onChange={setContainerType}
+            placeholder="tank, drum, tote, cylinder, bag" />
+          <FormField type="number" label="Container Count" value={containerCount} onChange={setContainerCount} />
+          <div className="grid grid-cols-2 gap-2">
+            <FormField type="number" label="Max Container Size" value={maxContainerSize} onChange={setMaxContainerSize} />
+            <FormField label="Size Unit" value={maxContainerSizeUnit} onChange={setMaxContainerSizeUnit}
+              placeholder="gal, lbs" />
+          </div>
+        </div>
+        <FormField type="textarea" label="Notes" value={notes} onChange={setNotes} rows={2} />
+        <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--color-current-line)]">
+          <button type="button" onClick={() => { reset(); onClose(); }} disabled={loading}
+            className="h-10 px-4 rounded-lg bg-[var(--color-bg-lighter)] border border-[var(--color-current-line)] text-[var(--color-fg)] text-sm cursor-pointer hover:border-[var(--color-selection)] transition-colors disabled:opacity-50">
+            Cancel
+          </button>
+          <button type="submit" disabled={loading}
+            className="h-10 px-4 rounded-lg bg-[var(--color-fn-purple)] text-[var(--color-bg)] font-semibold text-sm cursor-pointer border-none hover:opacity-90 transition-opacity disabled:opacity-50">
+            {loading ? 'Saving...' : 'Record snapshot'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+// ============ Inventory list ============
+
+function InventoryList({ chemicalId, refreshKey }: { chemicalId: number; refreshKey: number }) {
+  const [rows, setRows] = useState<Row[] | null>(null);
+
+  const refresh = useCallback(() => {
+    api.get<PagedResult<Row>>('/api/chemical-inventory?per_page=500')
+      .then(r => setRows((r.data ?? []).filter(x => (x.chemical_id as number) === chemicalId)))
+      .catch(() => setRows([]));
+  }, [chemicalId]);
+
+  useEffect(() => { refresh(); }, [refresh, refreshKey]);
+
+  if (rows === null) return <p className="text-xs text-[var(--color-comment)]">Loading…</p>;
+  if (rows.length === 0) return <p className="text-xs text-[var(--color-comment)]">No inventory snapshots recorded yet.</p>;
+  return (
+    <table className="w-full text-sm">
+      <thead>
+        <tr className="border-b border-[var(--color-current-line)]">
+          <th className="text-left py-2 font-semibold text-xs uppercase tracking-wider text-[var(--color-comment)]">Date</th>
+          <th className="text-left py-2 font-semibold text-xs uppercase tracking-wider text-[var(--color-comment)]">Type</th>
+          <th className="text-left py-2 font-semibold text-xs uppercase tracking-wider text-[var(--color-comment)]">Quantity</th>
+          <th className="text-left py-2 font-semibold text-xs uppercase tracking-wider text-[var(--color-comment)]">Location</th>
+          <th className="text-left py-2 font-semibold text-xs uppercase tracking-wider text-[var(--color-comment)]">Container</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(r => (
+          <tr key={String(r.id)} className="border-b border-[var(--color-current-line)] last:border-b-0">
+            <td className="py-2 text-[var(--color-fg)]">{formatDate(r.snapshot_date as string)}</td>
+            <td className="py-2 text-[var(--color-fg)] capitalize">{String(r.snapshot_type ?? '—')}</td>
+            <td className="py-2 text-[var(--color-fg)]">{String(r.quantity ?? '—')} {String(r.unit ?? '')}</td>
+            <td className="py-2 text-[var(--color-fg)]">#{String(r.storage_location_id)}</td>
+            <td className="py-2 text-[var(--color-fg)]">
+              {r.container_type ? `${String(r.container_type)} × ${String(r.container_count ?? '?')}` : '—'}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
 
 function HazardBadge({ label, active }: { label: string; active: unknown }) {
   if (!active) return null;
@@ -38,6 +225,8 @@ export default function ChemicalDetail() {
   const [confirm, setConfirm] = useState<null | 'reactivate' | 'delete'>(null);
   const [discontinueOpen, setDiscontinueOpen] = useState(false);
   const [discontinueReason, setDiscontinueReason] = useState('');
+  const [inventoryOpen, setInventoryOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   async function runAction() {
     if (!id || !confirm) return;
@@ -280,6 +469,22 @@ export default function ChemicalDetail() {
           <Field label="Required PPE" value={data.ppe_required} />
         </Section>
 
+        <div className="rounded-xl bg-[var(--color-bg-light)] border border-[var(--color-current-line)] p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xs font-semibold text-[var(--color-purple)] uppercase tracking-wider">
+              Inventory Snapshots
+            </h2>
+            <button
+              type="button"
+              onClick={() => setInventoryOpen(true)}
+              className="h-8 px-3 rounded-lg bg-[var(--color-fn-purple)] text-[var(--color-bg)] font-semibold text-xs cursor-pointer border-none hover:opacity-90 transition-opacity"
+            >
+              + Record snapshot
+            </button>
+          </div>
+          <InventoryList chemicalId={Number(id)} refreshKey={refreshKey} />
+        </div>
+
         <Section title="Record">
           <Field label="Created" value={data.created_at} />
           <Field label="Updated" value={data.updated_at} />
@@ -342,6 +547,13 @@ export default function ChemicalDetail() {
           placeholder="e.g. Replaced with non-halogenated alternative"
         />
       </Modal>
+
+      <InventoryModal
+        chemicalId={Number(id)}
+        open={inventoryOpen}
+        onClose={() => setInventoryOpen(false)}
+        onSaved={() => setRefreshKey(k => k + 1)}
+      />
     </div>
   );
 }
