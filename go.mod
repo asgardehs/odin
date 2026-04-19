@@ -3,7 +3,7 @@ module github.com/asgardehs/odin
 go 1.26.1
 
 require (
-	github.com/go-git/go-git/v5 v5.17.2
+	github.com/go-git/go-git/v5 v5.18.0
 	github.com/msteinert/pam/v2 v2.1.0
 	github.com/ncruces/go-sqlite3 v0.33.3
 	golang.org/x/crypto v0.50.0
