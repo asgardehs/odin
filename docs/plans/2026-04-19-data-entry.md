@@ -154,6 +154,12 @@ Not in this plan's scope — come back when upstream work clears.
 2. **Establishment scoping** — when editing from a particular establishment's context, should lists/selectors auto-filter to that establishment? Or always show everything?
 3. **Bulk operations** — any need for "import chemicals from CSV" or similar at launch, or is single-record entry fine for now?
 
+## Future enhancements (post-plan backlog)
+
+Ideas we want to preserve but are explicitly not in scope for this plan.
+
+- **NAICS / SIC code lookup helper on the Establishment form.** Currently the user types raw codes into free-text inputs. For EHS professionals new to the field, this is easy to get wrong. Integrate an NAICS lookup (NAICS Association API or the Census Bureau's NAICS data; evaluate license + API stability before committing) so the user can search by keyword ("electroplating" → 332813) and pick. The matching 4-digit SIC can be inferred from the 6-digit NAICS via a lookup table or the same API. Value: reduces data-entry errors and lowers the learning curve for first-time EHS managers. Implementation notes: same `EntitySelector`-style popup but backed by a remote API instead of a local list; cache results since these codes don't change often.
+
 ## Suggested build order
 
 Each module is roughly one work unit (page form + wire-up + smoke test). Sub-record modals add ~0.25 unit each.
