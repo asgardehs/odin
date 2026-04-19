@@ -3,7 +3,7 @@ import { useAuth, type User } from '../context/AuthContext';
 import { api, setToken } from '../api';
 import logo from '../assets/OdinEHSlogo_256.png';
 
-type Mode = 'login' | 'setup' | 'forgot' | 'reset';
+type Mode = 'login' | 'setup' | 'forgot' | 'reset' | 'recover';
 
 export default function Login() {
   const { login, enterReadonly } = useAuth();
@@ -26,6 +26,9 @@ export default function Login() {
   const [answers, setAnswers] = useState(['', '', '']);
   const [newPassword, setNewPassword] = useState('');
   const [resetSuccess, setResetSuccess] = useState(false);
+
+  // Recover-with-key flow state.
+  const [recoveryKeyInput, setRecoveryKeyInput] = useState('');
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -129,6 +132,44 @@ export default function Login() {
     }
   }
 
+  async function handleRecoverSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    if (!username.trim()) {
+      setError('Username is required');
+      return;
+    }
+    if (!recoveryKeyInput.trim()) {
+      setError('Recovery key is required');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await api.post<{ token: string; user: User }>(
+        '/api/auth/recover',
+        {
+          recovery_key: recoveryKeyInput.trim(),
+          username: username.trim(),
+          new_password: newPassword,
+        },
+      );
+      setToken(res.token);
+      window.location.reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Recovery failed');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleResetSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
@@ -161,31 +202,32 @@ export default function Login() {
     setSecurityQuestions([]);
     setAnswers(['', '', '']);
     setNewPassword('');
+    setRecoveryKeyInput('');
     setResetSuccess(false);
   }
 
   // --- Recovery key modal ---
   if (recoveryKey) {
     return (
-      <div className="flex flex-col h-screen bg-[var(--color-bg-primary)]">
+      <div className="flex flex-col h-screen bg-[var(--color-bg)]">
         <header className="flex items-center h-24 px-6 mt-6">
           <img src={logo} alt="Odin EHS" className="h-24" />
         </header>
 
         <div className="flex-1 flex items-center justify-center">
           <div className="w-full max-w-md">
-            <div className="rounded-xl bg-[var(--color-bg-card)] border border-[var(--color-border)] p-8">
-              <h1 className="text-xl font-semibold text-[var(--color-text-primary)] mb-2">
+            <div className="rounded-xl bg-[var(--color-bg-light)] border border-[var(--color-current-line)] p-8">
+              <h1 className="text-xl font-semibold text-[var(--color-fg)] mb-2">
                 Recovery Key
               </h1>
-              <p className="text-sm text-[var(--color-text-secondary)] mb-6">
+              <p className="text-sm text-[var(--color-fg)] mb-6">
                 Save this key somewhere safe. It is the only way to regain access
                 if all admin passwords are lost. This key will not be shown again.
               </p>
 
               <div
                 ref={keyRef}
-                className="rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] p-4 text-center font-mono text-lg tracking-widest text-[var(--color-accent-light)] select-all mb-6"
+                className="rounded-lg bg-[var(--color-bg)] border border-[var(--color-current-line)] p-4 text-center font-mono text-lg tracking-widest text-[var(--color-purple)] select-all mb-6"
               >
                 {recoveryKey}
               </div>
@@ -193,7 +235,7 @@ export default function Login() {
               <div className="flex gap-3">
                 <button
                   onClick={handlePrintRecoveryKey}
-                  className="flex-1 h-10 rounded-lg bg-[var(--color-bg-hover)] border border-[var(--color-border)] text-[var(--color-text-primary)] text-sm cursor-pointer hover:border-[var(--color-border-light)] transition-colors"
+                  className="flex-1 h-10 rounded-lg bg-[var(--color-bg-lighter)] border border-[var(--color-current-line)] text-[var(--color-fg)] text-sm cursor-pointer hover:border-[var(--color-selection)] transition-colors"
                 >
                   Print
                 </button>
@@ -201,7 +243,7 @@ export default function Login() {
                   onClick={() => {
                     navigator.clipboard.writeText(recoveryKey);
                   }}
-                  className="flex-1 h-10 rounded-lg bg-[var(--color-bg-hover)] border border-[var(--color-border)] text-[var(--color-text-primary)] text-sm cursor-pointer hover:border-[var(--color-border-light)] transition-colors"
+                  className="flex-1 h-10 rounded-lg bg-[var(--color-bg-lighter)] border border-[var(--color-current-line)] text-[var(--color-fg)] text-sm cursor-pointer hover:border-[var(--color-selection)] transition-colors"
                 >
                   Copy
                 </button>
@@ -209,7 +251,7 @@ export default function Login() {
 
               <button
                 onClick={handleRecoveryAcknowledged}
-                className="w-full h-10 mt-4 rounded-lg bg-[var(--color-accent)] text-[var(--color-bg-primary)] font-semibold text-sm cursor-pointer border-none hover:opacity-90 transition-opacity"
+                className="w-full h-10 mt-4 rounded-lg bg-[var(--color-fn-purple)] text-[var(--color-bg)] font-semibold text-sm cursor-pointer border-none hover:opacity-90 transition-opacity"
               >
                 I've saved my recovery key
               </button>
@@ -222,13 +264,13 @@ export default function Login() {
 
   // --- Login / Setup form ---
   return (
-    <div className="flex flex-col h-screen bg-[var(--color-bg-primary)]">
+    <div className="flex flex-col h-screen bg-[var(--color-bg)]">
       {/* Top bar with logo + read-only */}
       <header className="flex items-center justify-between h-24 px-6 mt-6">
         <img src={logo} alt="Odin EHS" className="h-24" />
         <button
           onClick={enterReadonly}
-          className="h-9 px-4 rounded-lg bg-[var(--color-bg-card)] border border-[var(--color-border)] text-[var(--color-text-secondary)] text-sm cursor-pointer hover:border-[var(--color-border-light)] hover:text-[var(--color-text-primary)] transition-colors"
+          className="h-9 px-4 rounded-lg bg-[var(--color-bg-light)] border border-[var(--color-current-line)] text-[var(--color-fg)] text-sm cursor-pointer hover:border-[var(--color-selection)] hover:text-[var(--color-fg)] transition-colors"
         >
           Read-only mode
         </button>
@@ -237,16 +279,17 @@ export default function Login() {
       {/* Centered form */}
       <div className="flex-1 flex items-center justify-center">
         <div className="w-full max-w-sm">
-          <div className="rounded-xl bg-[var(--color-bg-card)] border border-[var(--color-border)] p-8">
-            <h1 className="text-xl font-semibold text-[var(--color-text-primary)] mb-6">
+          <div className="rounded-xl bg-[var(--color-bg-light)] border border-[var(--color-current-line)] p-8">
+            <h1 className="text-xl font-semibold text-[var(--color-fg)] mb-6">
               {mode === 'login' && 'Sign in'}
               {mode === 'setup' && 'Create account'}
               {mode === 'forgot' && 'Forgot password'}
               {mode === 'reset' && 'Reset password'}
+              {mode === 'recover' && 'Recover with key'}
             </h1>
 
             {error && (
-              <div className="rounded-lg bg-[var(--color-status-danger)]/10 border border-[var(--color-status-danger)]/30 text-[var(--color-status-danger)] px-4 py-3 mb-4 text-sm">
+              <div className="rounded-lg bg-[var(--color-fn-red)]/10 border border-[var(--color-fn-red)]/30 text-[var(--color-fn-red)] px-4 py-3 mb-4 text-sm">
                 {error}
               </div>
             )}
@@ -254,12 +297,12 @@ export default function Login() {
             {/* Reset success message */}
             {resetSuccess && (
               <div>
-                <div className="rounded-lg bg-[var(--color-status-ok)]/10 border border-[var(--color-status-ok)]/30 text-[var(--color-status-ok)] px-4 py-3 mb-4 text-sm">
+                <div className="rounded-lg bg-[var(--color-fn-green)]/10 border border-[var(--color-fn-green)]/30 text-[var(--color-fn-green)] px-4 py-3 mb-4 text-sm">
                   Password reset successfully.
                 </div>
                 <button
                   onClick={() => switchMode('login')}
-                  className="w-full h-10 rounded-lg bg-[var(--color-accent)] text-[var(--color-bg-primary)] font-semibold text-sm cursor-pointer border-none hover:opacity-90 transition-opacity"
+                  className="w-full h-10 rounded-lg bg-[var(--color-fn-purple)] text-[var(--color-bg)] font-semibold text-sm cursor-pointer border-none hover:opacity-90 transition-opacity"
                 >
                   Back to sign in
                 </button>
@@ -270,30 +313,30 @@ export default function Login() {
             {mode === 'login' && (
               <form onSubmit={handleLogin} className="flex flex-col gap-4">
                 <div>
-                  <label className="block text-xs text-[var(--color-text-secondary)] mb-1.5">Username</label>
+                  <label className="block text-xs text-[var(--color-fg)] mb-1.5">Username</label>
                   <input
                     type="text"
                     value={username}
                     onChange={e => setUsername(e.target.value)}
                     required
                     autoFocus
-                    className="w-full h-10 px-3 rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] text-sm outline-none focus:border-[var(--color-accent)] transition-colors"
+                    className="w-full h-10 px-3 rounded-lg bg-[var(--color-bg)] border border-[var(--color-current-line)] text-[var(--color-fg)] text-sm outline-none focus:border-[var(--color-fn-purple)] transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-[var(--color-text-secondary)] mb-1.5">Password</label>
+                  <label className="block text-xs text-[var(--color-fg)] mb-1.5">Password</label>
                   <input
                     type="password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     required
-                    className="w-full h-10 px-3 rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] text-sm outline-none focus:border-[var(--color-accent)] transition-colors"
+                    className="w-full h-10 px-3 rounded-lg bg-[var(--color-bg)] border border-[var(--color-current-line)] text-[var(--color-fg)] text-sm outline-none focus:border-[var(--color-fn-purple)] transition-colors"
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="h-10 mt-2 rounded-lg bg-[var(--color-accent)] text-[var(--color-bg-primary)] font-semibold text-sm cursor-pointer border-none hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="h-10 mt-2 rounded-lg bg-[var(--color-fn-purple)] text-[var(--color-bg)] font-semibold text-sm cursor-pointer border-none hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? 'Signing in...' : 'Sign in'}
                 </button>
@@ -304,50 +347,50 @@ export default function Login() {
             {mode === 'setup' && (
               <form onSubmit={handleSetup} className="flex flex-col gap-4">
                 <div>
-                  <label className="block text-xs text-[var(--color-text-secondary)] mb-1.5">Username</label>
+                  <label className="block text-xs text-[var(--color-fg)] mb-1.5">Username</label>
                   <input
                     type="text"
                     value={username}
                     onChange={e => setUsername(e.target.value)}
                     required
                     autoFocus
-                    className="w-full h-10 px-3 rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] text-sm outline-none focus:border-[var(--color-accent)] transition-colors"
+                    className="w-full h-10 px-3 rounded-lg bg-[var(--color-bg)] border border-[var(--color-current-line)] text-[var(--color-fg)] text-sm outline-none focus:border-[var(--color-fn-purple)] transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-[var(--color-text-secondary)] mb-1.5">Display name</label>
+                  <label className="block text-xs text-[var(--color-fg)] mb-1.5">Display name</label>
                   <input
                     type="text"
                     value={displayName}
                     onChange={e => setDisplayName(e.target.value)}
                     placeholder={username || 'Optional'}
-                    className="w-full h-10 px-3 rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] text-sm outline-none focus:border-[var(--color-accent)] transition-colors placeholder:text-[var(--color-text-muted)]"
+                    className="w-full h-10 px-3 rounded-lg bg-[var(--color-bg)] border border-[var(--color-current-line)] text-[var(--color-fg)] text-sm outline-none focus:border-[var(--color-fn-purple)] transition-colors placeholder:text-[var(--color-comment)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-[var(--color-text-secondary)] mb-1.5">Password</label>
+                  <label className="block text-xs text-[var(--color-fg)] mb-1.5">Password</label>
                   <input
                     type="password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     required
-                    className="w-full h-10 px-3 rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] text-sm outline-none focus:border-[var(--color-accent)] transition-colors"
+                    className="w-full h-10 px-3 rounded-lg bg-[var(--color-bg)] border border-[var(--color-current-line)] text-[var(--color-fg)] text-sm outline-none focus:border-[var(--color-fn-purple)] transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-[var(--color-text-secondary)] mb-1.5">Confirm password</label>
+                  <label className="block text-xs text-[var(--color-fg)] mb-1.5">Confirm password</label>
                   <input
                     type="password"
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
                     required
-                    className="w-full h-10 px-3 rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] text-sm outline-none focus:border-[var(--color-accent)] transition-colors"
+                    className="w-full h-10 px-3 rounded-lg bg-[var(--color-bg)] border border-[var(--color-current-line)] text-[var(--color-fg)] text-sm outline-none focus:border-[var(--color-fn-purple)] transition-colors"
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="h-10 mt-2 rounded-lg bg-[var(--color-accent)] text-[var(--color-bg-primary)] font-semibold text-sm cursor-pointer border-none hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="h-10 mt-2 rounded-lg bg-[var(--color-fn-purple)] text-[var(--color-bg)] font-semibold text-sm cursor-pointer border-none hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? 'Creating account...' : 'Create account'}
                 </button>
@@ -357,26 +400,94 @@ export default function Login() {
             {/* Forgot password — enter username */}
             {mode === 'forgot' && (
               <form onSubmit={handleForgotSubmit} className="flex flex-col gap-4">
-                <p className="text-sm text-[var(--color-text-secondary)] -mt-2 mb-1">
+                <p className="text-sm text-[var(--color-fg)] -mt-2 mb-1">
                   Enter your username to retrieve your security questions.
                 </p>
                 <div>
-                  <label className="block text-xs text-[var(--color-text-secondary)] mb-1.5">Username</label>
+                  <label className="block text-xs text-[var(--color-fg)] mb-1.5">Username</label>
                   <input
                     type="text"
                     value={username}
                     onChange={e => setUsername(e.target.value)}
                     required
                     autoFocus
-                    className="w-full h-10 px-3 rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] text-sm outline-none focus:border-[var(--color-accent)] transition-colors"
+                    className="w-full h-10 px-3 rounded-lg bg-[var(--color-bg)] border border-[var(--color-current-line)] text-[var(--color-fg)] text-sm outline-none focus:border-[var(--color-fn-purple)] transition-colors"
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="h-10 mt-2 rounded-lg bg-[var(--color-accent)] text-[var(--color-bg-primary)] font-semibold text-sm cursor-pointer border-none hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="h-10 mt-2 rounded-lg bg-[var(--color-fn-purple)] text-[var(--color-bg)] font-semibold text-sm cursor-pointer border-none hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? 'Loading...' : 'Continue'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchMode('recover')}
+                  className="text-xs text-[var(--color-comment)] hover:text-[var(--color-fg)] bg-transparent border-none cursor-pointer p-0 transition-colors"
+                >
+                  Have a recovery key? Use it instead
+                </button>
+              </form>
+            )}
+
+            {/* Recover with key — username + recovery key + new password */}
+            {mode === 'recover' && (
+              <form onSubmit={handleRecoverSubmit} className="flex flex-col gap-4">
+                <p className="text-sm text-[var(--color-fg)] -mt-2 mb-1">
+                  Enter your recovery key to reset your password. This is the last-resort
+                  path when all admin passwords are lost.
+                </p>
+                <div>
+                  <label className="block text-xs text-[var(--color-fg)] mb-1.5">Username</label>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={e => setUsername(e.target.value)}
+                    required
+                    autoFocus
+                    className="w-full h-10 px-3 rounded-lg bg-[var(--color-bg)] border border-[var(--color-current-line)] text-[var(--color-fg)] text-sm outline-none focus:border-[var(--color-fn-purple)] transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-[var(--color-fg)] mb-1.5">Recovery key</label>
+                  <input
+                    type="text"
+                    value={recoveryKeyInput}
+                    onChange={e => setRecoveryKeyInput(e.target.value)}
+                    placeholder="Xxxx-Xxxx-Xxxx-Xxxx-Xxxx-Xxxx-Xxxx-Xxxx"
+                    required
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="w-full h-10 px-3 rounded-lg bg-[var(--color-bg)] border border-[var(--color-current-line)] text-[var(--color-fg)] text-sm font-mono outline-none focus:border-[var(--color-fn-purple)] transition-colors placeholder:text-[var(--color-comment)]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-[var(--color-fg)] mb-1.5">New password</label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                    required
+                    className="w-full h-10 px-3 rounded-lg bg-[var(--color-bg)] border border-[var(--color-current-line)] text-[var(--color-fg)] text-sm outline-none focus:border-[var(--color-fn-purple)] transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-[var(--color-fg)] mb-1.5">Confirm new password</label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    required
+                    className="w-full h-10 px-3 rounded-lg bg-[var(--color-bg)] border border-[var(--color-current-line)] text-[var(--color-fg)] text-sm outline-none focus:border-[var(--color-fn-purple)] transition-colors"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="h-10 mt-2 rounded-lg bg-[var(--color-fn-purple)] text-[var(--color-bg)] font-semibold text-sm cursor-pointer border-none hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Recovering...' : 'Reset password with key'}
                 </button>
               </form>
             )}
@@ -384,36 +495,36 @@ export default function Login() {
             {/* Reset password — answer questions + new password */}
             {mode === 'reset' && !resetSuccess && (
               <form onSubmit={handleResetSubmit} className="flex flex-col gap-4">
-                <p className="text-sm text-[var(--color-text-secondary)] -mt-2 mb-1">
+                <p className="text-sm text-[var(--color-fg)] -mt-2 mb-1">
                   Answer your security questions. Answers are case-sensitive.
                 </p>
                 {securityQuestions.map((q, i) => (
                   <div key={i}>
-                    <label className="block text-xs text-[var(--color-text-secondary)] mb-1.5">{q}</label>
+                    <label className="block text-xs text-[var(--color-fg)] mb-1.5">{q}</label>
                     <input
                       type="text"
                       value={answers[i]}
                       onChange={e => setAnswers(prev => prev.map((a, j) => j === i ? e.target.value : a))}
                       required
                       autoFocus={i === 0}
-                      className="w-full h-10 px-3 rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] text-sm outline-none focus:border-[var(--color-accent)] transition-colors"
+                      className="w-full h-10 px-3 rounded-lg bg-[var(--color-bg)] border border-[var(--color-current-line)] text-[var(--color-fg)] text-sm outline-none focus:border-[var(--color-fn-purple)] transition-colors"
                     />
                   </div>
                 ))}
                 <div>
-                  <label className="block text-xs text-[var(--color-text-secondary)] mb-1.5">New password</label>
+                  <label className="block text-xs text-[var(--color-fg)] mb-1.5">New password</label>
                   <input
                     type="password"
                     value={newPassword}
                     onChange={e => setNewPassword(e.target.value)}
                     required
-                    className="w-full h-10 px-3 rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] text-sm outline-none focus:border-[var(--color-accent)] transition-colors"
+                    className="w-full h-10 px-3 rounded-lg bg-[var(--color-bg)] border border-[var(--color-current-line)] text-[var(--color-fg)] text-sm outline-none focus:border-[var(--color-fn-purple)] transition-colors"
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="h-10 mt-2 rounded-lg bg-[var(--color-accent)] text-[var(--color-bg-primary)] font-semibold text-sm cursor-pointer border-none hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="h-10 mt-2 rounded-lg bg-[var(--color-fn-purple)] text-[var(--color-bg)] font-semibold text-sm cursor-pointer border-none hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? 'Resetting...' : 'Reset password'}
                 </button>
@@ -422,14 +533,14 @@ export default function Login() {
           </div>
 
           {/* Mode toggle */}
-          <div className="text-center text-sm text-[var(--color-text-muted)] mt-4 flex flex-col gap-2">
+          <div className="text-center text-sm text-[var(--color-comment)] mt-4 flex flex-col gap-2">
             {mode === 'login' && (
               <>
                 <p>
                   No account yet?{' '}
                   <button
                     onClick={() => switchMode('setup')}
-                    className="text-[var(--color-accent)] hover:text-[var(--color-accent-light)] bg-transparent border-none cursor-pointer text-sm p-0 transition-colors"
+                    className="text-[var(--color-fn-purple)] hover:text-[var(--color-purple)] bg-transparent border-none cursor-pointer text-sm p-0 transition-colors"
                   >
                     Create new user
                   </button>
@@ -437,18 +548,18 @@ export default function Login() {
                 <p>
                   <button
                     onClick={() => switchMode('forgot')}
-                    className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] bg-transparent border-none cursor-pointer text-sm p-0 transition-colors"
+                    className="text-[var(--color-fg)] hover:text-[var(--color-fg)] bg-transparent border-none cursor-pointer text-sm p-0 transition-colors"
                   >
                     Forgot password?
                   </button>
                 </p>
               </>
             )}
-            {(mode === 'setup' || mode === 'forgot' || mode === 'reset') && (
+            {(mode === 'setup' || mode === 'forgot' || mode === 'reset' || mode === 'recover') && (
               <p>
                 <button
                   onClick={() => switchMode('login')}
-                  className="text-[var(--color-accent)] hover:text-[var(--color-accent-light)] bg-transparent border-none cursor-pointer text-sm p-0 transition-colors"
+                  className="text-[var(--color-fn-purple)] hover:text-[var(--color-purple)] bg-transparent border-none cursor-pointer text-sm p-0 transition-colors"
                 >
                   Back to sign in
                 </button>
