@@ -290,6 +290,17 @@ Ideas we want to preserve but are explicitly not in scope for this plan.
     (Section 2 GHS classification, Section 9 physical properties) — would save
     significant data entry. Could live behind a feature flag initially.
 
+- **Clickable Inspection Findings — read-only detail modal.** Today findings
+  are listed on the Inspection detail page but can't be opened. A user should
+  be able to click a row and see the full record (description, citation,
+  immediate action + by-whom, closure notes, etc.) in a read-only modal —
+  the list row truncates description at 120 chars, which is fine for the
+  summary view but not for review. Keep it read-only for now; "edit finding"
+  can follow the same pattern as the other detail → edit transitions. Low
+  effort: reuse `Modal` + `Field`/`Section`, open on row click, close on
+  escape/backdrop. Close button already-open close-finding flow stays on
+  its own "Close" button to keep destructive/state-changing actions explicit.
+
 ## Suggested build order
 
 Each module is roughly one work unit (page form + wire-up + smoke test).
