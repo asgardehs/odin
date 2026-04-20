@@ -561,6 +561,41 @@ func (s *Server) writeRoutes() {
 			return s.repo.DeletePPEInspection(user, id)
 		},
 	))
+
+	// -- Emission Units (Module B: Title V / CAA) --
+	s.mux.HandleFunc("POST /api/emission-units", s.handleCreate(
+		func(user string, body []byte) (int64, error) {
+			var in repository.EmissionUnitInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return 0, err
+			}
+			return s.repo.CreateEmissionUnit(user, in)
+		},
+	))
+	s.mux.HandleFunc("PUT /api/emission-units/{id}", s.handleUpdate(
+		func(user string, id int64, body []byte) error {
+			var in repository.EmissionUnitInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return err
+			}
+			return s.repo.UpdateEmissionUnit(user, id, in)
+		},
+	))
+	s.mux.HandleFunc("POST /api/emission-units/{id}/decommission", s.handleAction(
+		func(user string, id int64, _ []byte) error {
+			return s.repo.DecommissionEmissionUnit(user, id)
+		},
+	))
+	s.mux.HandleFunc("POST /api/emission-units/{id}/reactivate", s.handleAction(
+		func(user string, id int64, _ []byte) error {
+			return s.repo.ReactivateEmissionUnit(user, id)
+		},
+	))
+	s.mux.HandleFunc("DELETE /api/emission-units/{id}", s.handleDelete(
+		func(user string, id int64) error {
+			return s.repo.DeleteEmissionUnit(user, id)
+		},
+	))
 }
 
 // Handler factories — reduce boilerplate across write endpoints.

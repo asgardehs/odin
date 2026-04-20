@@ -162,6 +162,31 @@ detail):**
 - Add finding → `POST /api/inspection-findings`. Close finding →
   `POST /api/inspection-findings/{id}/close`.
 
+### 8. Audits
+
+ISO auditor feedback landed (2026-04-20) and the schema captures what they
+called out. **Page form fields:** establishment_id\*, audit_number,
+audit_title\*, audit_type\* (internal | external_surveillance |
+external_certification | external_recertification), standard_id,
+is_integrated_audit, additional_standard_ids, registrar_name,
+certificate_number, scheduled_start_date, scheduled_end_date,
+actual_start_date, actual_end_date, lead_auditor_id (internal) | 
+lead_auditor_name + lead_auditor_company (external), scope_description,
+exclusions, previous_audit_id, audit_objectives, audit_criteria,
+recommendation, recommendation_conditions, status (planned | in_progress |
+draft_report | final | closed), executive_summary, conclusion, report_date,
+report_file_reference, followup_audit_needed, followup_audit_date.
+**Sections:** Identity • Type & Standards • Dates • Lead Auditor • Scope •
+Results & Recommendation • Report • Follow-up. **Status actions:** close via
+`POST /api/audits/{id}/close`. **Endpoints:** `POST/PUT/DELETE
+/api/audits{/:id}` (already wired). **Sub-records (modal on audit detail):**
+
+- Add finding → `POST /api/audit-findings`. Fields: finding_number,
+  finding_type (major_nc | minor_nc | ofi | positive | observation),
+  clause_id, clause_number, finding_statement\*, process_area, risk_level
+  (high | medium | low), evidence_description, is_repeat_finding.
+- Verify finding → `POST /api/audit-findings/{id}/verify`.
+
 ---
 
 ## Phase 3 — Supporting modules
@@ -199,19 +224,39 @@ Stream Identity • Classification • Physical Form. **Status actions:** deacti
 via `POST /api/waste-streams/{id}/deactivate`. **Endpoints:**
 `POST/PUT/DELETE /api/waste-streams{/:id}`.
 
+### 12. Emission Units
+
+Legal review cleared (2026-04-20) the field set against Title V / CAA
+requirements. **Page form fields:** establishment_id\*, unit_name\*,
+unit_description, source_category\* (welding | coating | combustion |
+solvent | material_handling), scc_code, is_fugitive, building, area,
+stack_id, permit_type_code, permit_number, max_throughput,
+max_throughput_unit, max_operating_hours_year (default 8760),
+typical_operating_hours_year, restricted_throughput,
+restricted_throughput_unit, restricted_hours_year, is_active, install_date,
+decommission_date, notes. **Sections:** Identity • Source Classification •
+Location • Permit • Operating Parameters • Federally Enforceable Restrictions
+• Service Dates. **Status actions:** decommission (sets decommission_date,
+is_active=0). **Endpoints backend work required:** add `POST /api/emission-units`,
+`PUT /api/emission-units/{id}`, `DELETE /api/emission-units/{id}`,
+`POST /api/emission-units/{id}/decommission`,
+`POST /api/emission-units/{id}/reactivate` to `api_write.go` before wiring
+the frontend. **Sub-records:** stack assignment via `stack_id`
+`EntitySelector`; control devices, emission materials, and PTE calcs stay
+out of scope for this pass — those are their own module builds later.
+
 ---
 
 ## Deferred modules
 
-Not in this plan's scope — come back when upstream work clears.
+Previously-deferred items have cleared upstream review. Custom tables (the
+schema-builder feature) remain the escape hatch for anything the shipped
+field set misses — end users can extend per-facility without a code change.
 
-- **Audits.** Deferred pending feedback from ISO auditors. Backend is complete;
-  frontend skipped for now. When the auditor feedback lands, audits becomes a
-  full-module add (list/detail/create/edit page + findings modal + sidebar
-  icon).
-- **Emission Units.** Deferred pending legal review to confirm all required
-  fields are captured. Backend is currently GET-only by design. When writes are
-  added, the module gets create/edit UI in the pattern of the other 11.
+- ~~**Audits.**~~ ISO auditor feedback landed 2026-04-20. Promoted to Phase 2
+  §8 above.
+- ~~**Emission Units.**~~ Legal review cleared 2026-04-20. Promoted to Phase 3
+  §12 above (backend writes still needed; called out in the section).
 - ~~**Chemical Inventory snapshot modal.**~~ Shipped post-Phase 3. Built
   Storage Locations as its own primary module (backend repo + routes + list /
   detail / create / edit pages + sidebar link), then added the
@@ -314,10 +359,12 @@ Sub-record modals add ~0.25 unit each.
 5. Incidents + Corrective Actions modal
 6. Permits
 7. Inspections + Findings modal
-8. Training + Completions/Assignments modals
-9. PPE + Assignments/Inspections modals
-10. Waste Streams
-11. (Audit log "Activity" tab, admin-only — fits anywhere after Phase 0,
+8. ~~Audits + Findings modal~~ (shipped 2026-04-20)
+9. Training + Completions/Assignments modals
+10. PPE + Assignments/Inspections modals
+11. Waste Streams
+12. ~~Emission Units~~ (shipped 2026-04-20 — backend writes + frontend)
+13. (Audit log "Activity" tab, admin-only — fits anywhere after Phase 0,
     probably best alongside a module build so the pattern is exercised)
 
-**Deferred:** Audits, Emission Units. See Deferred Modules section.
+**All 13 plan items are now shipped (2026-04-20).**

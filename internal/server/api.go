@@ -240,6 +240,41 @@ func (s *Server) apiRoutes() {
 		"audit_number", "audit_title",
 	)
 
+	s.entityRoutes("/api/audit-findings", "audit finding",
+		`SELECT id, audit_id, finding_number, finding_type,
+		        clause_number, clause_title, finding_statement,
+		        process_area, risk_level, status,
+		        verified_date, corrective_action_id, created_at
+		 FROM audit_findings ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+		`SELECT COUNT(*) FROM audit_findings`,
+		`SELECT * FROM audit_findings WHERE id = ?`,
+	)
+
+	s.entityRoutes("/api/iso-standards", "iso standard",
+		`SELECT id, standard_code, standard_name, full_title, current_version, is_active
+		 FROM iso_standards ORDER BY standard_code LIMIT ? OFFSET ?`,
+		`SELECT COUNT(*) FROM iso_standards`,
+		`SELECT * FROM iso_standards WHERE id = ?`,
+		"standard_code", "standard_name",
+	)
+
+	s.entityRoutes("/api/air-stacks", "air stack",
+		`SELECT id, establishment_id, stack_name, stack_number,
+		        height_ft, diameter_in, is_active
+		 FROM air_stacks ORDER BY stack_name LIMIT ? OFFSET ?`,
+		`SELECT COUNT(*) FROM air_stacks`,
+		`SELECT * FROM air_stacks WHERE id = ?`,
+		"stack_name", "stack_number",
+	)
+
+	s.entityRoutes("/api/air-permit-types", "air permit type",
+		`SELECT code, name, description, cfr_reference
+		 FROM air_permit_types ORDER BY name LIMIT ? OFFSET ?`,
+		`SELECT COUNT(*) FROM air_permit_types`,
+		`SELECT * FROM air_permit_types WHERE code = ?`,
+		"name", "code",
+	)
+
 	// -- Permits & Licenses --
 
 	s.entityRoutes("/api/permits", "permit",

@@ -22,6 +22,12 @@ import TrainingForm from './pages/modules/TrainingForm';
 import InspectionList from './pages/modules/InspectionList';
 import InspectionDetail from './pages/modules/InspectionDetail';
 import InspectionForm from './pages/modules/InspectionForm';
+import AuditList from './pages/modules/AuditList';
+import AuditDetail from './pages/modules/AuditDetail';
+import AuditForm from './pages/modules/AuditForm';
+import EmissionUnitList from './pages/modules/EmissionUnitList';
+import EmissionUnitDetail from './pages/modules/EmissionUnitDetail';
+import EmissionUnitForm from './pages/modules/EmissionUnitForm';
 import PermitList from './pages/modules/PermitList';
 import PermitDetail from './pages/modules/PermitDetail';
 import PermitForm from './pages/modules/PermitForm';
@@ -89,6 +95,16 @@ function AppRoutes() {
           <Route path="inspections/new" element={<InspectionForm />} />
           <Route path="inspections/:id" element={<InspectionDetail />} />
           <Route path="inspections/:id/edit" element={<InspectionForm />} />
+
+          <Route path="audits" element={<AuditList />} />
+          <Route path="audits/new" element={<AuditForm />} />
+          <Route path="audits/:id" element={<AuditDetail />} />
+          <Route path="audits/:id/edit" element={<AuditForm />} />
+
+          <Route path="emission-units" element={<EmissionUnitList />} />
+          <Route path="emission-units/new" element={<EmissionUnitForm />} />
+          <Route path="emission-units/:id" element={<EmissionUnitDetail />} />
+          <Route path="emission-units/:id/edit" element={<EmissionUnitForm />} />
 
           <Route path="permits" element={<PermitList />} />
           <Route path="permits/new" element={<PermitForm />} />
