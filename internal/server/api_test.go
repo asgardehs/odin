@@ -59,13 +59,17 @@ func newTestServerWithDB(t *testing.T) *testContext {
 		t.Fatalf("migrate: %v", err)
 	}
 
-	// Apply auth migration.
-	authSQL, err := os.ReadFile("../../embed/migrations/001_app_auth.sql")
+	// Apply app migrations (auth, schema-builder metadata, etc.) in
+	// alphabetical order so tests mirror the production bootstrap.
+	appMigDir := os.DirFS("../../embed/migrations")
+	appMigrations, err := database.CollectAppMigrations(appMigDir)
 	if err != nil {
-		t.Fatalf("read auth migration: %v", err)
+		t.Fatalf("collect app migrations: %v", err)
 	}
-	if err := db.Exec(string(authSQL)); err != nil {
-		t.Fatalf("auth migrate: %v", err)
+	for _, m := range appMigrations {
+		if err := db.Exec(m.SQL); err != nil {
+			t.Fatalf("app migration %s: %v", m.Name, err)
+		}
 	}
 
 	// Seed a test establishment so FK-dependent queries work.

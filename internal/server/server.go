@@ -11,6 +11,7 @@ import (
 	"github.com/asgardehs/odin/internal/auth"
 	"github.com/asgardehs/odin/internal/database"
 	"github.com/asgardehs/odin/internal/repository"
+	"github.com/asgardehs/odin/internal/schemabuilder"
 )
 
 // Server is the Odin HTTP server.
@@ -21,6 +22,8 @@ type Server struct {
 	auth            auth.Authenticator
 	db              *database.DB
 	repo            *repository.Repo
+	schemaExec      *schemabuilder.Executor
+	schemaQB        *schemabuilder.QueryBuilder
 	users           *auth.UserStore
 	sessions        *auth.SessionStore
 	recovery        *auth.RecoveryStore
@@ -34,16 +37,24 @@ func New(frontend fs.FS, authenticator auth.Authenticator, auditStore *audit.Sto
 	if db != nil && auditStore != nil {
 		repo = &repository.Repo{DB: db, Audit: auditStore}
 	}
+	var schemaExec *schemabuilder.Executor
+	var schemaQB *schemabuilder.QueryBuilder
+	if db != nil {
+		schemaExec = schemabuilder.NewExecutor(db)
+		schemaQB = schemabuilder.NewQueryBuilder(schemaExec)
+	}
 	s := &Server{
-		mux:      http.NewServeMux(),
-		frontend: frontend,
-		audit:    auditStore,
-		auth:     authenticator,
-		db:       db,
-		repo:     repo,
-		users:    users,
-		sessions: sessions,
-		recovery: recovery,
+		mux:        http.NewServeMux(),
+		frontend:   frontend,
+		audit:      auditStore,
+		auth:       authenticator,
+		db:         db,
+		repo:       repo,
+		schemaExec: schemaExec,
+		schemaQB:   schemaQB,
+		users:      users,
+		sessions:   sessions,
+		recovery:   recovery,
 		// 5 tokens, 1 token earned per 12 seconds (≈5 attempts/minute).
 		limiter: NewRateLimiter(5, 12*time.Second),
 	}
@@ -113,6 +124,7 @@ func (s *Server) routes() {
 	// Data API routes (requires database).
 	s.apiRoutes()
 	s.writeRoutes()
+	s.schemaRoutes()
 
 	// Frontend: serve embedded SPA. Non-file paths fall back to index.html
 	// so React Router can handle client-side routes.
