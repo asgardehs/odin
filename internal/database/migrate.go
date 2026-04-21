@@ -31,6 +31,9 @@ var moduleOrder = []string{
 	"module_d_clean_water.sql",
 	"module_industrial_waste_streams.sql",
 	"module_ppe.sql",
+	// Import framework — must load after establishments (Module C) because
+	// _imports.target_establishment_id FKs to it. No other cross-module deps.
+	"module_imports.sql",
 }
 
 // orderIndex maps module filenames to their required load position.
