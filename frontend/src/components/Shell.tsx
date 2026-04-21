@@ -16,6 +16,7 @@ const navItems = [
   { to: '/permits',       label: 'Permits',      icon: '📄' },
   { to: '/emission-units', label: 'Emissions',   icon: '💨' },
   { to: '/discharge-points', label: 'Outfalls',  icon: '💧' },
+  { to: '/ww-sample-events', label: 'Sample Events', icon: '🧫' },
   { to: '/waste',         label: 'Waste',        icon: '♻' },
   { to: '/ppe',           label: 'PPE',          icon: '🦺' },
   { to: '/storage-locations', label: 'Storage',  icon: '📦' },

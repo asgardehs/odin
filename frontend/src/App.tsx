@@ -34,6 +34,9 @@ import PermitForm from './pages/modules/PermitForm';
 import DischargePointList from './pages/modules/DischargePointList';
 import DischargePointDetail from './pages/modules/DischargePointDetail';
 import DischargePointForm from './pages/modules/DischargePointForm';
+import WaterSampleEventList from './pages/modules/WaterSampleEventList';
+import WaterSampleEventDetail from './pages/modules/WaterSampleEventDetail';
+import WaterSampleEventForm from './pages/modules/WaterSampleEventForm';
 import WasteList from './pages/modules/WasteList';
 import WasteDetail from './pages/modules/WasteDetail';
 import WasteForm from './pages/modules/WasteForm';
@@ -124,6 +127,11 @@ function AppRoutes() {
           <Route path="discharge-points/new" element={<DischargePointForm />} />
           <Route path="discharge-points/:id" element={<DischargePointDetail />} />
           <Route path="discharge-points/:id/edit" element={<DischargePointForm />} />
+
+          <Route path="ww-sample-events" element={<WaterSampleEventList />} />
+          <Route path="ww-sample-events/new" element={<WaterSampleEventForm />} />
+          <Route path="ww-sample-events/:id" element={<WaterSampleEventDetail />} />
+          <Route path="ww-sample-events/:id/edit" element={<WaterSampleEventForm />} />
 
           <Route path="waste" element={<WasteList />} />
           <Route path="waste/new" element={<WasteForm />} />
