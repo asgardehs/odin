@@ -5,6 +5,7 @@ import { useEntityMutation } from '../../hooks/useEntityMutation';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { FieldEditor, RelationEditor } from '../../components/schema/FieldEditor';
 import { VersionHistory } from '../../components/schema/VersionHistory';
+import { notifySchemaChanged } from '../../hooks/useCustomTablesList';
 import type { CustomTable, CustomField, CustomRelation } from '../../hooks/useCustomTableSchema';
 
 type ConfirmState =
@@ -52,6 +53,7 @@ export default function SchemaDesigner() {
 
   function refresh() {
     setRefreshKey(k => k + 1);
+    notifySchemaChanged();
     load();
   }
 

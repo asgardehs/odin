@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
+import { useCustomTablesList } from '../hooks/useCustomTablesList';
 import logo from '../assets/OdinEHSlogo_256.png';
 
 const navItems = [
@@ -27,7 +28,14 @@ const adminNavItems = [
 export default function Shell() {
   const { user, readonly, logout } = useAuth();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Custom tables group — only fetched for admins; the endpoint is
+  // admin-only and non-admin users simply see no group rendered.
+  const customTables = useCustomTablesList(user?.role === 'admin');
+  const sortedCustomTables = [...customTables].sort((a, b) =>
+    a.display_name.localeCompare(b.display_name),
+  );
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -66,6 +74,36 @@ export default function Shell() {
               {sidebarOpen && <span>{item.label}</span>}
             </NavLink>
           ))}
+
+          {/* Custom Tables group — visible to admins once ≥1 active
+              custom table exists. Refreshes on odin:schema-changed. */}
+          {user?.role === 'admin' && sortedCustomTables.length > 0 && (
+            <>
+              <div className="mt-2 mb-1 px-4 h-px bg-[var(--color-current-line)]" />
+              {sidebarOpen && (
+                <div className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-[var(--color-comment)]">
+                  Custom Tables
+                </div>
+              )}
+              {sortedCustomTables.map(t => (
+                <NavLink
+                  key={t.id}
+                  to={`/custom/${t.name}`}
+                  className={({ isActive }) =>
+                    `flex items-center h-10 px-4 gap-3 text-sm transition-colors whitespace-nowrap ${
+                      isActive
+                        ? 'text-[var(--color-purple)] bg-[var(--color-bg-lighter)] border-r-2 border-[var(--color-fn-purple)]'
+                        : 'text-[var(--color-fg)] hover:text-[var(--color-fg)] hover:bg-[var(--color-bg-lighter)]'
+                    }`
+                  }
+                  title={t.display_name}
+                >
+                  <span className="text-base w-5 text-center shrink-0">{t.icon ?? '🧱'}</span>
+                  {sidebarOpen && <span className="truncate">{t.display_name}</span>}
+                </NavLink>
+              ))}
+            </>
+          )}
 
           {user?.role === 'admin' && (
             <>

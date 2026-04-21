@@ -4,6 +4,7 @@ import { SectionCard } from '../../components/forms/SectionCard';
 import { FormField } from '../../components/forms/FormField';
 import { FormActions } from '../../components/forms/FormActions';
 import { useEntityMutation } from '../../hooks/useEntityMutation';
+import { notifySchemaChanged } from '../../hooks/useCustomTablesList';
 
 /**
  * Normalize a human display name into a legal metadata name matching
@@ -69,6 +70,7 @@ export default function SchemaNew() {
         description: description.trim() || null,
         icon: icon || null,
       });
+      notifySchemaChanged();
       navigate(`/admin/schema/${res.id}`);
     } catch {
       // saveError surfaces

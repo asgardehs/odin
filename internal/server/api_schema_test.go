@@ -552,6 +552,78 @@ func TestSchemaAPI_RecordSchemaEndpointAccessibleToAnyAuthedUser(t *testing.T) {
 	}
 }
 
+func TestSchemaAPI_ColumnsEndpoint(t *testing.T) {
+	tc := newTestServerWithDB(t)
+
+	// Happy path: a whitelisted pre-built target.
+	w := tc.doJSON(t, "GET", "/api/schema/columns?table=employees", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("employees columns: %d; %s", w.Code, w.Body.String())
+	}
+	var out jsonMap
+	decodeJSON(t, w, &out)
+	cols, _ := out["columns"].([]any)
+	foundLastName := false
+	for _, c := range cols {
+		if m, ok := c.(map[string]any); ok {
+			if m["name"] == "last_name" {
+				foundLastName = true
+			}
+		}
+	}
+	if !foundLastName {
+		t.Errorf("expected employees to have last_name column; got %+v", cols)
+	}
+
+	// Non-whitelisted target rejected with 400.
+	w = tc.doJSON(t, "GET", "/api/schema/columns?table=app_users", nil)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("app_users (not whitelisted): want 400, got %d", w.Code)
+	}
+
+	// Allowed shape but doesn't exist → 404.
+	w = tc.doJSON(t, "GET", "/api/schema/columns?table=cx_nonexistent", nil)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("cx_nonexistent: want 404, got %d", w.Code)
+	}
+
+	// Missing param → 400.
+	w = tc.doJSON(t, "GET", "/api/schema/columns", nil)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("missing table param: want 400, got %d", w.Code)
+	}
+
+	// Non-admin → 403.
+	token := seedNonAdmin(t, tc)
+	w = tc.doJSONAs(t, token, "GET", "/api/schema/columns?table=employees", nil)
+	if w.Code != http.StatusForbidden {
+		t.Errorf("non-admin: want 403, got %d", w.Code)
+	}
+
+	// An existing cx_ table is also valid.
+	w = tc.doJSON(t, "POST", "/api/schema/tables", jsonMap{
+		"name": "widgets", "display_name": "Widgets",
+	})
+	var createRes jsonMap
+	decodeJSON(t, w, &createRes)
+	tableID := int64(createRes["id"].(float64))
+	w = tc.doJSON(t, "POST", "/api/schema/tables/"+idPath(tableID)+"/fields", jsonMap{
+		"name": "label", "display_name": "Label", "field_type": "text",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("add label: %d", w.Code)
+	}
+	w = tc.doJSON(t, "GET", "/api/schema/columns?table=cx_widgets", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("cx_widgets: %d; %s", w.Code, w.Body.String())
+	}
+	decodeJSON(t, w, &out)
+	cols, _ = out["columns"].([]any)
+	if len(cols) < 5 { // id, establishment_id, created_at, updated_at, label
+		t.Errorf("cx_widgets should have >=5 columns, got %d", len(cols))
+	}
+}
+
 func TestSchemaAPI_NonAdminCannotListVersionsOrGetSchema(t *testing.T) {
 	tc := newTestServerWithDB(t)
 	token := seedNonAdmin(t, tc)

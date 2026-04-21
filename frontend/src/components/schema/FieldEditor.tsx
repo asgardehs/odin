@@ -2,7 +2,11 @@ import { useEffect, useState } from 'react';
 import { Modal } from '../Modal';
 import { FormField } from '../forms/FormField';
 import { useEntityMutation } from '../../hooks/useEntityMutation';
+import { api } from '../../api';
 import type { FieldType } from '../../hooks/useCustomTableSchema';
+
+interface ColumnInfo { name: string; type: string }
+interface ColumnsResponse { columns: ColumnInfo[] }
 
 const fieldTypeOptions: { value: FieldType; label: string }[] = [
   { value: 'text', label: 'Text' },
@@ -277,6 +281,8 @@ export function RelationEditor({
   const [targetTableName, setTargetTableName] = useState<string>('employees');
   const [displayField, setDisplayField] = useState<string>('');
   const [err, setErr] = useState<string | null>(null);
+  const [columns, setColumns] = useState<ColumnInfo[] | null>(null);
+  const [columnsError, setColumnsError] = useState<string | null>(null);
   const { mutate, loading } = useEntityMutation();
 
   useEffect(() => {
@@ -286,8 +292,52 @@ export function RelationEditor({
       setTargetTableName('employees');
       setDisplayField('');
       setErr(null);
+      setColumns(null);
+      setColumnsError(null);
     }
   }, [open]);
+
+  // Fetch columns whenever the target-table input changes (debounced).
+  // Failures fall back to free-text entry so a typo or temporarily
+  // unresolvable target doesn't block the admin.
+  useEffect(() => {
+    if (!open) return;
+    const target = targetTableName.trim();
+    if (!target) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setColumns(null);
+      setColumnsError(null);
+      return;
+    }
+    const controller = new AbortController();
+    const t = setTimeout(() => {
+      api.get<ColumnsResponse>(`/api/schema/columns?table=${encodeURIComponent(target)}`)
+        .then(r => {
+          if (controller.signal.aborted) return;
+          setColumns(r.columns ?? []);
+          setColumnsError(null);
+        })
+        .catch(e => {
+          if (controller.signal.aborted) return;
+          setColumns(null);
+          setColumnsError(e instanceof Error ? e.message : 'Failed to load columns');
+        });
+    }, 200);
+    return () => {
+      controller.abort();
+      clearTimeout(t);
+    };
+  }, [open, targetTableName]);
+
+  // When the column list arrives, clear a stale display_field that
+  // isn't on the new target; otherwise keep whatever the admin picked.
+  useEffect(() => {
+    if (!columns || !displayField) return;
+    if (!columns.some(c => c.name === displayField)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDisplayField('');
+    }
+  }, [columns, displayField]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -355,14 +405,34 @@ export function RelationEditor({
                 Any existing cx_* table is also allowed.
               </p>
             </div>
-            <FormField
-              label="Display field"
-              required
-              value={displayField}
-              onChange={setDisplayField}
-              placeholder="e.g. last_name, name, title"
-              hint="Column on the target used as the dropdown label."
-            />
+            {columns && columns.length > 0 ? (
+              <FormField
+                type="select"
+                label="Display field"
+                required
+                value={displayField}
+                onChange={setDisplayField}
+                options={columns.map(c => ({
+                  value: c.name,
+                  label: c.type ? `${c.name} (${c.type.toLowerCase()})` : c.name,
+                }))}
+                placeholder="Pick a column..."
+                hint={`Column on ${targetTableName} used as the dropdown label.`}
+              />
+            ) : (
+              <FormField
+                label="Display field"
+                required
+                value={displayField}
+                onChange={setDisplayField}
+                placeholder="e.g. last_name, name, title"
+                hint={
+                  columnsError
+                    ? `Can't load columns for ${targetTableName} — enter a column name manually.`
+                    : 'Column on the target used as the dropdown label.'
+                }
+              />
+            )}
           </>
         )}
 

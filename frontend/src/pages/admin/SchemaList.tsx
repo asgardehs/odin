@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { api } from '../../api';
 import { useEntityMutation } from '../../hooks/useEntityMutation';
+import { notifySchemaChanged } from '../../hooks/useCustomTablesList';
 import type { CustomTable } from '../../hooks/useCustomTableSchema';
 
 interface TablesResponse { tables: CustomTable[] }
@@ -23,6 +24,7 @@ export default function SchemaList() {
   async function reactivate(id: number) {
     try {
       await mutate('POST', `/api/schema/tables/${id}/reactivate`);
+      notifySchemaChanged();
       load();
     } catch {
       // mutate surfaces error

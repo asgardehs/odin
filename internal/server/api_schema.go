@@ -32,6 +32,7 @@ func (s *Server) schemaRoutes() {
 	s.mux.HandleFunc("POST   /api/schema/tables/{id}/relations", s.handleSchemaAddRelation)
 	s.mux.HandleFunc("POST   /api/schema/tables/{id}/relations/{rid}/deactivate", s.handleSchemaDeactivateRelation)
 	s.mux.HandleFunc("GET    /api/schema/tables/{id}/versions", s.handleSchemaListVersions)
+	s.mux.HandleFunc("GET    /api/schema/columns", s.handleSchemaColumns)
 
 	// -- Record CRUD (any authed user) --
 	s.mux.HandleFunc("GET    /api/records/{slug}", s.handleRecordList)
@@ -258,6 +259,69 @@ func (s *Server) handleSchemaDeactivateRelation(w http.ResponseWriter, r *http.R
 	s.recordSchemaAudit(admin.Username, audit.ActionUpdate, tableID,
 		fmt.Sprintf("Deactivated relation %d on custom table %d", relID, tableID), nil)
 	writeJSON(w, map[string]string{"status": "ok"})
+}
+
+// handleSchemaColumns returns the column list of a prospective
+// relation-target table. Used by the designer's RelationEditor so
+// display_field can be a dropdown of real columns instead of a
+// free-text input. Admin-only.
+//
+// Security: the target must be either a whitelisted pre-built table
+// (same list the Validator uses) or an existing cx_* custom table.
+// Anything else is rejected with 400 — this mirrors the write-side
+// validator exactly, so the endpoint never exposes columns of
+// application tables like app_users or app_sessions.
+func (s *Server) handleSchemaColumns(w http.ResponseWriter, r *http.Request) {
+	admin := s.requireAdmin(w, r)
+	if admin == nil {
+		return
+	}
+	target := strings.TrimSpace(r.URL.Query().Get("table"))
+	if target == "" {
+		writeError(w, "table is required", http.StatusBadRequest)
+		return
+	}
+	isCx := strings.HasPrefix(target, schemabuilder.TablePrefix)
+	if !isCx && !schemabuilder.IsAllowedRelationTarget(target) {
+		writeError(w, "target not a permitted relation target", http.StatusBadRequest)
+		return
+	}
+	// Verify existence via sqlite_master (parameterized).
+	exists, err := s.db.QueryVal(
+		`SELECT 1 FROM sqlite_master WHERE type IN ('table','view') AND name = ?`,
+		target,
+	)
+	if err != nil {
+		writeError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if exists == nil {
+		writeError(w, "table not found", http.StatusNotFound)
+		return
+	}
+	// PRAGMA table_info can't bind — but `target` is now verified to
+	// be an existing identifier from sqlite_master AND matches our
+	// allowlist shape, so double-quoting it is safe here.
+	quoted := strings.ReplaceAll(target, `"`, `""`)
+	rows, err := s.db.QueryRows(`PRAGMA table_info("` + quoted + `")`)
+	if err != nil {
+		writeError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	type col struct {
+		Name string `json:"name"`
+		Type string `json:"type"`
+	}
+	out := make([]col, 0, len(rows))
+	for _, row := range rows {
+		name, _ := row["name"].(string)
+		typ, _ := row["type"].(string)
+		if name == "" {
+			continue
+		}
+		out = append(out, col{Name: name, Type: typ})
+	}
+	writeJSON(w, map[string]any{"columns": out})
 }
 
 func (s *Server) handleSchemaListVersions(w http.ResponseWriter, r *http.Request) {
