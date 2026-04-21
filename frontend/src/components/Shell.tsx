@@ -32,6 +32,7 @@ const cleanWaterNavItems = [
 const adminNavItems = [
   { to: '/admin/users',  label: 'Users',  icon: '🔐' },
   { to: '/admin/schema', label: 'Schema', icon: '🧱' },
+  { to: '/admin/import', label: 'Import', icon: '📥' },
 ];
 
 export default function Shell() {

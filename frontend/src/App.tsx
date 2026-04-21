@@ -58,6 +58,7 @@ import UserForm from './pages/admin/UserForm';
 import SchemaList from './pages/admin/SchemaList';
 import SchemaNew from './pages/admin/SchemaNew';
 import SchemaDesigner from './pages/admin/SchemaDesigner';
+import ImportPage from './pages/admin/ImportPage';
 import { AdminOnly } from './components/AdminOnly';
 
 
@@ -174,6 +175,8 @@ function AppRoutes() {
           <Route path="admin/schema" element={<AdminOnly><SchemaList /></AdminOnly>} />
           <Route path="admin/schema/new" element={<AdminOnly><SchemaNew /></AdminOnly>} />
           <Route path="admin/schema/:id" element={<AdminOnly><SchemaDesigner /></AdminOnly>} />
+
+          <Route path="admin/import" element={<AdminOnly><ImportPage /></AdminOnly>} />
         </Route>
       </Routes>
     </BrowserRouter>
