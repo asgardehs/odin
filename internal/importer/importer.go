@@ -66,6 +66,7 @@ type Importer interface {
 type RowContext struct {
 	EstablishmentID *int64 // set when the importer wants every row to land on a specific facility
 	UploadedBy      string
+	DB              Execer // opt-in: mappers that need FK lookups during validation read from this
 }
 
 // Execer is the subset of the database API the importer needs for INSERTs.

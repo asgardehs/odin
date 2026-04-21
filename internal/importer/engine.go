@@ -102,7 +102,7 @@ func (e *Engine) Upload(module, user, filename string, r io.Reader, targetEstabl
 	token := newToken()
 	now := time.Now().UTC()
 	expires := now.Add(e.ttl())
-	ctx := RowContext{EstablishmentID: targetEstablishmentID, UploadedBy: user}
+	ctx := RowContext{EstablishmentID: targetEstablishmentID, UploadedBy: user, DB: e.DB}
 
 	errs := validateAll(imp, rows, mapping, ctx)
 
@@ -163,7 +163,7 @@ func (e *Engine) UpdateMapping(token, user string, newMapping map[string]string)
 		return nil, ErrAlreadyCommitted
 	}
 
-	ctx := RowContext{EstablishmentID: state.TargetEstablishmentID, UploadedBy: user}
+	ctx := RowContext{EstablishmentID: state.TargetEstablishmentID, UploadedBy: user, DB: e.DB}
 	errs := validateAll(imp, state.Rows, newMapping, ctx)
 
 	mappingJSON, _ := json.Marshal(newMapping)
@@ -194,7 +194,7 @@ func (e *Engine) Commit(token, user string, skipInvalid bool) (*CommitResult, er
 		return nil, ErrAlreadyCommitted
 	}
 
-	ctx := RowContext{EstablishmentID: state.TargetEstablishmentID, UploadedBy: user}
+	ctx := RowContext{EstablishmentID: state.TargetEstablishmentID, UploadedBy: user, DB: e.DB}
 	errs := validateAll(imp, state.Rows, state.Mapping, ctx)
 	invalidRows := map[int]bool{}
 	for _, v := range errs {
