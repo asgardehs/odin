@@ -15,11 +15,18 @@ const navItems = [
   { to: '/audits',        label: 'Audits',       icon: '📝' },
   { to: '/permits',       label: 'Permits',      icon: '📄' },
   { to: '/emission-units', label: 'Emissions',   icon: '💨' },
-  { to: '/discharge-points', label: 'Outfalls',  icon: '💧' },
-  { to: '/ww-sample-events', label: 'Sample Events', icon: '🧫' },
   { to: '/waste',         label: 'Waste',        icon: '♻' },
   { to: '/ppe',           label: 'PPE',          icon: '🦺' },
   { to: '/storage-locations', label: 'Storage',  icon: '📦' },
+];
+
+// Module D — Clean Water Act. Rendered as its own labeled section so the
+// four entries stay grouped together semantically.
+const cleanWaterNavItems = [
+  { to: '/permits/npdes',    label: 'NPDES Permits',  icon: '📄' },
+  { to: '/discharge-points', label: 'Outfalls',       icon: '🌊' },
+  { to: '/ww-sample-events', label: 'Sample Events',  icon: '🧫' },
+  { to: '/swpps',            label: 'SWPPPs',         icon: '📘' },
 ];
 
 const adminNavItems = [
@@ -64,6 +71,32 @@ export default function Shell() {
               key={item.to}
               to={item.to}
               end={item.to === '/'}
+              className={({ isActive }) =>
+                `flex items-center h-10 px-4 gap-3 text-sm transition-colors whitespace-nowrap ${
+                  isActive
+                    ? 'text-[var(--color-purple)] bg-[var(--color-bg-lighter)] border-r-2 border-[var(--color-fn-purple)]'
+                    : 'text-[var(--color-fg)] hover:text-[var(--color-fg)] hover:bg-[var(--color-bg-lighter)]'
+                }`
+              }
+            >
+              <span className="text-base w-5 text-center shrink-0">{item.icon}</span>
+              {sidebarOpen && <span>{item.label}</span>}
+            </NavLink>
+          ))}
+
+          {/* Clean Water (Module D) group — NPDES permits as a filter view,
+              plus Module D-distinctive entries (outfalls, sample events,
+              SWPPPs). */}
+          <div className="mt-2 mb-1 px-4 h-px bg-[var(--color-current-line)]" />
+          {sidebarOpen && (
+            <div className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-[var(--color-comment)]">
+              💧 Clean Water
+            </div>
+          )}
+          {cleanWaterNavItems.map(item => (
+            <NavLink
+              key={item.to}
+              to={item.to}
               className={({ isActive }) =>
                 `flex items-center h-10 px-4 gap-3 text-sm transition-colors whitespace-nowrap ${
                   isActive

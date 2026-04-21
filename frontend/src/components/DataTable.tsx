@@ -22,12 +22,16 @@ interface DataTableProps {
   columns: ColumnDef<Row>[];
   apiUrl: string;
   onRowClick?: (row: Row) => void;
+  /** Optional client-side transform applied to rows after fetch.
+   *  Use for filter views that can't be expressed server-side
+   *  (e.g. filtering permits by category via a FK join). */
+  transformRows?: (rows: Row[]) => Row[];
 }
 
 const PER_PAGE = 50;
 
 /** Reusable paginated data table backed by any PagedResult API endpoint. */
-export function DataTable({ columns, apiUrl, onRowClick }: DataTableProps) {
+export function DataTable({ columns, apiUrl, onRowClick, transformRows }: DataTableProps) {
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<PagedResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,7 +40,8 @@ export function DataTable({ columns, apiUrl, onRowClick }: DataTableProps) {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    apiFetch(`${apiUrl}?page=${page}&per_page=${PER_PAGE}`)
+    const sep = apiUrl.includes('?') ? '&' : '?';
+    apiFetch(`${apiUrl}${sep}page=${page}&per_page=${PER_PAGE}`)
       .then(async res => {
         if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
         return res.json() as Promise<PagedResult>;
@@ -46,7 +51,8 @@ export function DataTable({ columns, apiUrl, onRowClick }: DataTableProps) {
       .finally(() => setLoading(false));
   }, [apiUrl, page]);
 
-  const rows = result?.data ?? [];
+  const rawRows = result?.data ?? [];
+  const rows = transformRows ? transformRows(rawRows) : rawRows;
 
   // eslint-disable-next-line react-hooks/incompatible-library -- React Compiler not configured in this project
   const table = useReactTable({

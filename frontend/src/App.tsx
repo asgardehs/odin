@@ -37,6 +37,10 @@ import DischargePointForm from './pages/modules/DischargePointForm';
 import WaterSampleEventList from './pages/modules/WaterSampleEventList';
 import WaterSampleEventDetail from './pages/modules/WaterSampleEventDetail';
 import WaterSampleEventForm from './pages/modules/WaterSampleEventForm';
+import SWPPPList from './pages/modules/SWPPPList';
+import SWPPPDetail from './pages/modules/SWPPPDetail';
+import SWPPPForm from './pages/modules/SWPPPForm';
+import PermitListNPDES from './pages/modules/PermitListNPDES';
 import WasteList from './pages/modules/WasteList';
 import WasteDetail from './pages/modules/WasteDetail';
 import WasteForm from './pages/modules/WasteForm';
@@ -119,6 +123,7 @@ function AppRoutes() {
           <Route path="emission-units/:id/edit" element={<EmissionUnitForm />} />
 
           <Route path="permits" element={<PermitList />} />
+          <Route path="permits/npdes" element={<PermitListNPDES />} />
           <Route path="permits/new" element={<PermitForm />} />
           <Route path="permits/:id" element={<PermitDetail />} />
           <Route path="permits/:id/edit" element={<PermitForm />} />
@@ -132,6 +137,11 @@ function AppRoutes() {
           <Route path="ww-sample-events/new" element={<WaterSampleEventForm />} />
           <Route path="ww-sample-events/:id" element={<WaterSampleEventDetail />} />
           <Route path="ww-sample-events/:id/edit" element={<WaterSampleEventForm />} />
+
+          <Route path="swpps" element={<SWPPPList />} />
+          <Route path="swpps/new" element={<SWPPPForm />} />
+          <Route path="swpps/:id" element={<SWPPPDetail />} />
+          <Route path="swpps/:id/edit" element={<SWPPPForm />} />
 
           <Route path="waste" element={<WasteList />} />
           <Route path="waste/new" element={<WasteForm />} />
