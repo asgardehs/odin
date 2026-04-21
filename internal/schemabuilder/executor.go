@@ -392,6 +392,8 @@ func (e *Executor) loadTable(tableID int64) (*CustomTable, error) {
 		return nil, nil
 	}
 	t := tableFromRow(row)
+	t.Fields = []CustomField{}
+	t.Relations = []CustomRelation{}
 
 	// Fields.
 	fieldRows, err := e.DB.QueryRows(

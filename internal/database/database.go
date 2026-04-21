@@ -7,15 +7,32 @@ package database
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/ncruces/go-sqlite3"
 )
 
 // DB wraps a sqlite3 connection with Odin-specific configuration.
+//
+// ncruces/go-sqlite3 (Wasm) backs all DB access with a single shared
+// sqlite3.Conn that is NOT safe for concurrent use — parallel HTTP
+// handlers calling Prepare/Step at the same time corrupt the Wasm
+// memory and panic inside the module. A process-wide mutex serializes
+// every DB op. Acceptable for a single-user desktop app; moving to a
+// connection pool (one Conn per request) is the right fix if this
+// ever becomes a perf bottleneck.
 type DB struct {
 	conn *sqlite3.Conn
 	path string
+	mu   sync.Mutex
 }
+
+// Lock/Unlock let callers that need to run multiple DB ops as a unit
+// (e.g. a SAVEPOINT + DDL + INSERT sequence) hold the DB mutex across
+// the whole sequence. Normal callers should use the Exec/Query methods,
+// which lock internally.
+func (db *DB) Lock()   { db.mu.Lock() }
+func (db *DB) Unlock() { db.mu.Unlock() }
 
 // Open creates or opens an SQLite database at path and applies pragmas.
 func Open(path string) (*DB, error) {
@@ -39,6 +56,8 @@ func (db *DB) Conn() *sqlite3.Conn {
 
 // Close closes the database connection.
 func (db *DB) Close() error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
 	if db.conn != nil {
 		return db.conn.Close()
 	}
@@ -47,6 +66,8 @@ func (db *DB) Close() error {
 
 // Exec executes a SQL statement that returns no rows.
 func (db *DB) Exec(sql string) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
 	return db.conn.Exec(sql)
 }
 
@@ -61,6 +82,8 @@ type FKViolation struct {
 // CheckFK runs PRAGMA foreign_key_check and returns any violations.
 // Returns nil if all foreign key constraints are satisfied.
 func (db *DB) CheckFK() ([]FKViolation, error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
 	stmt, _, err := db.conn.Prepare("PRAGMA foreign_key_check")
 	if err != nil {
 		return nil, fmt.Errorf("database: fk check: %w", err)

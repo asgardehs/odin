@@ -437,6 +437,83 @@ func TestSchemaAPI_InactiveTableIs404OnRecordRoutes(t *testing.T) {
 	}
 }
 
+// Repro for user-reported "socket hang up" on GET record with a real
+// relation id set: create table → relation field → relation →
+// seed employee → create record owner=empID → GET the record.
+func TestSchemaAPI_RecordWithRelationRoundTrip(t *testing.T) {
+	tc := newTestServerWithDB(t)
+
+	w := tc.doJSON(t, "POST", "/api/schema/tables", jsonMap{
+		"name": "tasks", "display_name": "Tasks",
+	})
+	var createRes jsonMap
+	decodeJSON(t, w, &createRes)
+	tableID := int64(createRes["id"].(float64))
+
+	w = tc.doJSON(t, "POST", "/api/schema/tables/"+idPath(tableID)+"/fields", jsonMap{
+		"name": "title", "display_name": "Title",
+		"field_type": "text", "is_required": true,
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("add title: %d; %s", w.Code, w.Body.String())
+	}
+
+	w = tc.doJSON(t, "POST", "/api/schema/tables/"+idPath(tableID)+"/fields", jsonMap{
+		"name": "owner", "display_name": "Owner", "field_type": "relation",
+	})
+	var ownerRes jsonMap
+	decodeJSON(t, w, &ownerRes)
+	ownerFieldID := int64(ownerRes["id"].(float64))
+
+	w = tc.doJSON(t, "POST", "/api/schema/tables/"+idPath(tableID)+"/relations", jsonMap{
+		"source_field_id":   ownerFieldID,
+		"target_table_name": "employees",
+		"display_field":     "last_name",
+		"relation_type":     "belongs_to",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("add relation: %d; %s", w.Code, w.Body.String())
+	}
+
+	// Seed an employee to point at.
+	w = tc.doJSON(t, "POST", "/api/employees", jsonMap{
+		"establishment_id": 1,
+		"first_name":       "Alice",
+		"last_name":        "Anderson",
+		"employee_number":  "E-001",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("seed employee: %d; %s", w.Code, w.Body.String())
+	}
+	var empRes jsonMap
+	decodeJSON(t, w, &empRes)
+	empID := int64(empRes["id"].(float64))
+
+	// Create a record with the relation set.
+	w = tc.doJSON(t, "POST", "/api/records/tasks", jsonMap{
+		"title":            "Ship it",
+		"owner":            empID,
+		"establishment_id": 1,
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create record: %d; %s", w.Code, w.Body.String())
+	}
+	var rowRes jsonMap
+	decodeJSON(t, w, &rowRes)
+	rowID := int64(rowRes["id"].(float64))
+
+	// GET the record — user reports the proxy got "socket hang up" here.
+	w = tc.doJSON(t, "GET", "/api/records/tasks/"+idPath(rowID), nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("get record: %d; %s", w.Code, w.Body.String())
+	}
+	var row jsonMap
+	decodeJSON(t, w, &row)
+	if row["owner__label"] != "Anderson" {
+		t.Errorf("relation label mismatch: %+v", row)
+	}
+}
+
 func TestSchemaAPI_RecordSchemaEndpointAccessibleToAnyAuthedUser(t *testing.T) {
 	tc := newTestServerWithDB(t)
 	token := seedNonAdmin(t, tc)

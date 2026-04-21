@@ -55,6 +55,27 @@ Ideas we want to preserve but are explicitly not in scope for this plan.
   drifting when the same custom table is wanted in multiple places.
   Not in scope for the initial Schema Builder phase.
 
+- **Proper transaction isolation for the DB mutex.** Today
+  `internal/database/DB` serializes every Exec/Query through a single
+  process-wide `sync.Mutex` — required because `ncruces/go-sqlite3`
+  (WASM) exposes a single `*sqlite3.Conn` that is NOT safe for
+  concurrent use, and without the mutex parallel HTTP handlers cause
+  `index out of range` panics inside the WASM internals. Per-call
+  locking is enough to prevent the crash, but
+  `schemabuilder.Executor.withSavepoint` only holds the lock during
+  individual statements — another goroutine can sneak a DB op into
+  the middle of an open SAVEPOINT, which in SQLite means that op
+  participates in the savepoint's transaction stack. For a single-user
+  desktop app this is rare and low-blast-radius (admin DDL rarely
+  races with other mutations), but it's a real correctness gap. Fix
+  shape: expose `db.WithTx(fn func(tx *TxHandle) error) error` that
+  holds the mutex for the whole callback and passes unlocked
+  primitives (`tx.Exec`, `tx.QueryRow`, `tx.ExecParams`) to the
+  callback. Migrate `withSavepoint` to use it; remove the ad-hoc
+  SAVEPOINT/RELEASE sequencing. Consider a connection-pool approach
+  (one `*sqlite3.Conn` per goroutine) if per-call locking ever
+  becomes a perf bottleneck.
+
 - **Clickable Inspection Findings — read-only detail modal.** Today findings
   are listed on the Inspection detail page but can't be opened. A user should
   be able to click a row and see the full record (description, citation,

@@ -20,7 +20,8 @@ const navItems = [
 ];
 
 const adminNavItems = [
-  { to: '/admin/users', label: 'Users', icon: '🔐' },
+  { to: '/admin/users',  label: 'Users',  icon: '🔐' },
+  { to: '/admin/schema', label: 'Schema', icon: '🧱' },
 ];
 
 export default function Shell() {

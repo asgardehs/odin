@@ -131,6 +131,10 @@ type CustomRelationInput struct {
 }
 
 // CustomTable is the persisted shape returned by the repository.
+//
+// Fields and Relations are always serialized as a JSON array (never
+// omitted or null) so the frontend can rely on .filter/.map without
+// null guards.
 type CustomTable struct {
 	ID           int64            `json:"id"`
 	Name         string           `json:"name"`         // without prefix
@@ -141,8 +145,8 @@ type CustomTable struct {
 	IsActive     bool             `json:"is_active"`
 	CreatedAt    string           `json:"created_at"`
 	UpdatedAt    string           `json:"updated_at"`
-	Fields       []CustomField    `json:"fields,omitempty"`
-	Relations    []CustomRelation `json:"relations,omitempty"`
+	Fields       []CustomField    `json:"fields"`
+	Relations    []CustomRelation `json:"relations"`
 }
 
 // PhysicalName returns the real SQLite table name (prefix + metadata name).

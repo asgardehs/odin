@@ -12,6 +12,8 @@ type Row map[string]any
 // QueryRows executes a SELECT and returns all result rows.
 // Parameters are bound positionally (?1, ?2, ...).
 func (db *DB) QueryRows(sql string, args ...any) ([]Row, error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
 	stmt, _, err := db.conn.Prepare(sql)
 	if err != nil {
 		return nil, fmt.Errorf("query: prepare: %w", err)
@@ -40,6 +42,8 @@ func (db *DB) QueryRows(sql string, args ...any) ([]Row, error) {
 // QueryRow executes a SELECT and returns the first result row.
 // Returns nil if no rows match.
 func (db *DB) QueryRow(sql string, args ...any) (Row, error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
 	stmt, _, err := db.conn.Prepare(sql)
 	if err != nil {
 		return nil, fmt.Errorf("query: prepare: %w", err)
@@ -68,6 +72,8 @@ func (db *DB) QueryRow(sql string, args ...any) (Row, error) {
 // QueryVal executes a SELECT and returns the first column of the first row.
 // Returns the zero value and nil error if no rows match.
 func (db *DB) QueryVal(sql string, args ...any) (any, error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
 	stmt, _, err := db.conn.Prepare(sql)
 	if err != nil {
 		return nil, fmt.Errorf("query: prepare: %w", err)
@@ -90,6 +96,8 @@ func (db *DB) QueryVal(sql string, args ...any) (any, error) {
 // ExecParams executes a statement with bound parameters.
 // Use for INSERT, UPDATE, DELETE with ? placeholders.
 func (db *DB) ExecParams(sql string, args ...any) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
 	stmt, _, err := db.conn.Prepare(sql)
 	if err != nil {
 		return fmt.Errorf("exec: prepare: %w", err)

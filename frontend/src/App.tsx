@@ -45,6 +45,9 @@ import GenericRecordDetail from './pages/custom/GenericRecordDetail';
 import GenericRecordForm from './pages/custom/GenericRecordForm';
 import UsersList from './pages/admin/UsersList';
 import UserForm from './pages/admin/UserForm';
+import SchemaList from './pages/admin/SchemaList';
+import SchemaNew from './pages/admin/SchemaNew';
+import SchemaDesigner from './pages/admin/SchemaDesigner';
 import { AdminOnly } from './components/AdminOnly';
 
 
@@ -141,6 +144,10 @@ function AppRoutes() {
           <Route path="admin/users" element={<AdminOnly><UsersList /></AdminOnly>} />
           <Route path="admin/users/new" element={<AdminOnly><UserForm /></AdminOnly>} />
           <Route path="admin/users/:id/edit" element={<AdminOnly><UserForm /></AdminOnly>} />
+
+          <Route path="admin/schema" element={<AdminOnly><SchemaList /></AdminOnly>} />
+          <Route path="admin/schema/new" element={<AdminOnly><SchemaNew /></AdminOnly>} />
+          <Route path="admin/schema/:id" element={<AdminOnly><SchemaDesigner /></AdminOnly>} />
         </Route>
       </Routes>
     </BrowserRouter>
