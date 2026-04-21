@@ -19,20 +19,35 @@ self-contained; stop points between phases are clean.
   duplicated Go code.
 - **Fillable PDFs are pure Go.** `pdfcpu` fills OSHA's AcroForm PDFs
   directly from Go structs. No Python needed for this path.
-- **Additive only where possible.** Module D is a brand-new module (no
-  collision risk); import + PDF surfaces don't modify existing schemas.
+- **Additive plus relocation for Module D.** Original premise was "brand-new
+  module, no collision risk." Audit (2026-04-21) surfaced that most CWA
+  machinery already exists inside `module_industrial_waste_streams.sql`
+  and that `permits` / `permit_types` is already a generic shared-table
+  structure with CWA permit types pre-seeded. Module D is therefore a
+  **consolidation** (relocate `ww_*` tables into `module_d_clean_water.sql`)
+  plus a **gap fill** (4 genuinely new tables: discharge points, SWPPPs,
+  BMPs, outfall benchmarks), not a greenfield build. NPDES permits reuse
+  the generic `permits` table. Import + PDF surfaces still don't modify
+  existing schemas.
 
 ## Cross-cutting decisions
 
 Locked in 2026-04-20 unless noted.
 
-1. **Module D scope — bundled.** One `module_d_clean_water.sql` covering both
-   NPDES process wastewater and stormwater (matches Module B's Title V + CAA
-   pattern). Internally grouped with clear section headers.
-2. **Module D frontend — bespoke pages.** Primary records (permits,
-   discharge points, sample events, SWPPPs) get list/detail/form pages
-   matching Modules A–C. Configuration tables (parameters, limits, sectors)
-   stay admin-only read-through for MVP.
+1. **Module D scope — bundled + middle path (revised 2026-04-21).** One
+   `module_d_clean_water.sql` covering both NPDES process wastewater and
+   stormwater, but scoped to CWA-distinctive content only. Generic `permits`
+   / `permit_types` and the cascade tables (conditions, limits, monitoring
+   requirements, reporting, deviations, modifications, compliance calendar)
+   stay in `module_permits_licenses.sql`. Water-specific monitoring tables
+   relocate from `module_industrial_waste_streams.sql` into the new file.
+   See the Phase 1 "Reality check" block for the full audit.
+2. **Module D frontend — mix of bespoke + reuse (revised 2026-04-21).**
+   Discharge Points, Sample Events, and SWPPPs get fresh list/detail/form
+   pages. NPDES permits **reuse the existing** `PermitList/Detail/Form`
+   pages with a new filter view keyed on `permit_type_id IN (10, 11, 12,
+   13)`. Configuration tables (parameters, limits, sectors) stay admin-only
+   read-through for MVP.
 3. **Import — file upload location.** Multipart upload to a new
    `/api/import/csv` endpoint (and later `/api/import/xlsx`) streaming to a
    temp file under `ODIN_DATA_DIR/imports/{uuid}/` with a 30-minute TTL.
@@ -178,75 +193,142 @@ Single PR: `docs/ontology/ehs-ontology-v3.2.ttl` + a short changelog in
 
 ## Phase 1 — Module D: Clean Water Act SQL + backend
 
+### Reality check (audit landed 2026-04-21)
+
+Before writing new SQL, a scope audit uncovered that most of what this phase
+originally planned as "new" already exists in the schema — just spread across
+two unrelated files and with no Go/frontend wiring. The rewritten phase
+adopts the **middle path** from that review:
+
+- **Generic `permits` pattern stays.** `module_permits_licenses.sql` already
+  defines a generic `permits` + `permit_types` structure with `NPDES_INDIVIDUAL`
+  (id 10), `NPDES_GENERAL` (11), `NPDES_STORMWATER` (12), `PRETREATMENT` (13),
+  and `GWDP` (14) pre-seeded and stamped `regulatory_framework_code =
+  'CWA_Framework'`. NPDES permits live as rows in that shared table with
+  `permit_type_id` as discriminator. This aligns with the v3.2 ontology's
+  `ehs:NPDESPermit ⊂ ehs:Permit` pattern — shared-table polymorphism.
+  **No `npdes_permits` table is created.** NPDES benefits from the generic
+  permit_conditions / permit_limits / permit_monitoring_requirements /
+  permit_reporting_requirements / permit_report_submissions /
+  permit_deviations / permit_modifications / compliance_calendar cascade
+  that Title V already uses.
+- **CWA-distinctive machinery consolidates into `module_d_clean_water.sql`.**
+  Tables that belong to Module D in the ontology but currently live in
+  `module_industrial_waste_streams.sql` get relocated. Four genuinely new
+  tables (discharge points, SWPPPs, BMPs, outfall benchmarks) close the
+  remaining gaps.
+- **No Go/frontend wiring exists yet** for any `ww_*` table, so the relocation
+  has no runtime callers to update.
+- **Relocation is idempotent.** `CREATE TABLE IF NOT EXISTS` plus the
+  `_migrations` tracking table in `internal/database/migrate.go` means fresh
+  installs load the new file cleanly and existing dev DBs skip it (tables
+  already exist). No data migration needed.
+
 ### Schema
 
-Promote + merge the two archive files into `module_d_clean_water.sql`,
-load-ordered after Module B (depends on permits + establishments).
+Create `docs/database-design/sql/module_d_clean_water.sql`, load-ordered
+after `module_permits_licenses.sql` and `module_industrial_waste_streams.sql`
+in `internal/database/migrate.go`'s `moduleOrder` slice.
 
-**Primary tables:**
+**Relocated from `module_industrial_waste_streams.sql` (existing; move as-is
+then reconcile against v3.2 ontology):**
 
-- `npdes_permits` — individual/general permit metadata, effective/expiration
-  dates, authorized discharges, limits summary. FK to `establishments`.
-- `discharge_points` — outfall id, type (process wastewater / stormwater /
-  combined), receiving body, lat/lon, FK to permit.
-- `ww_monitoring_locations` — sampling points. FK to discharge_point (nullable
-  for internal process monitoring).
-- `ww_parameters` — seed table of common parameters (BOD, TSS, pH, oil &
-  grease, metals, priority pollutants). Three dozen rows; non-editable seed.
-- `ww_permit_limits` — permit_id + parameter_id + limit (daily max / monthly
-  avg) + units. Supports categorical + narrative limits.
-- `ww_sample_events` — a discrete sampling event at one location, with
-  date/time, collector, method.
-- `ww_sample_results` — event + parameter + result + qualifier + reporting
-  limit + method. One row per parameter per event.
-- `sw_swpps` — SWPPP document metadata per establishment (revision number,
-  effective date, next review, responsible staff).
-- `sw_bmps` — BMP catalog per SWPPP (structural vs non-structural,
-  description, inspection cadence).
-- `sw_outfall_benchmarks` — benchmark monitoring values per outfall per
-  sector (e.g., SIC 2812, 3471).
+- `ww_monitoring_locations` — compliance sampling points; already FKs to
+  `permits(id)` and `establishments(id)`.
+- `ww_parameters` — water pollutant reference table; verify coverage against
+  40 CFR 423 Appendix A + conventional pollutants.
+- `ww_monitoring_requirements` — per-permit parameter/frequency matrix.
+- `ww_sampling_events` — discrete sampling events.
+- `ww_sample_results` — one row per parameter per event.
+- `ww_flow_measurements` — flow-rate data supporting mass-loading
+  calculations.
+- `ww_equipment` / `ww_equipment_calibrations` — field and lab instruments.
+- `ww_labs` / `ww_lab_submissions` — contract lab tracking.
+
+The relocation removes these from `module_industrial_waste_streams.sql`,
+shrinking that file to its original RCRA/hazardous-waste/manifest focus.
+
+**New tables (fill the ontology-identified gaps):**
+
+- `discharge_points` — physical outfall: id, type (process wastewater /
+  stormwater / combined), receiving waterbody, lat/lon, FK to establishment,
+  FK to permit (generic `permits(id)` — typically an NPDES row). Closes the
+  existing dangling `outfall_id` FK hints in `permit_limits` and
+  `permit_monitoring_requirements`.
+- `sw_swpps` — SWPPP document metadata per establishment: revision number,
+  effective date, next review, responsible staff, source file path.
+- `sw_bmps` — BMP catalog per SWPPP: structural vs non-structural,
+  description, inspection cadence, responsible role.
+- `sw_outfall_benchmarks` — MSGP sector benchmark values per parameter,
+  joined to `discharge_points` via outfall and to `ww_parameters` via
+  parameter.
+
+**Ontology reconciliation pass (during relocation):**
+
+- Confirm `ww_parameters` rows cover the v3.2 `ehs:WaterPollutant` taxonomy
+  (conventional / priority / non-conventional / WET). Add the pollutant-type
+  discriminator column if missing.
+- Confirm FK from the new `discharge_points` to `ww_monitoring_locations`
+  is bidirectional-queryable (or add the reverse FK on
+  `ww_monitoring_locations` if cleaner).
+- Confirm `sw_swpps.establishment_id` + `sw_bmps.swppp_id` match the
+  `coveredBy` / `implements` relations.
 
 ### Seed data
 
-- `ww_parameters`: 40 CFR 423 priority pollutants + conventional pollutants.
-- `sw_industrial_sectors`: SIC → stormwater general permit sector mapping
-  (about 30 rows from the EPA Multi-Sector General Permit).
+- `ww_parameters`: 40 CFR 423 Appendix A priority pollutants (~126) +
+  conventional pollutants (BOD, TSS, pH, oil & grease, fecal coliform) +
+  common non-conventional (nutrients, chloride, sulfate, TDS, WET). Tag each
+  row with the `ehs:WaterPollutant` subclass (conventional / priority /
+  non-conventional / WET).
+- `sw_industrial_sectors`: SIC → MSGP sector mapping (~30 rows from the EPA
+  2021 Multi-Sector General Permit).
 
 ### Go repository + routes
 
-Follow the Module B pattern:
-- `internal/repository/clean_water.go` with `NPDESPermitInput`,
-  `DischargePointInput`, `SampleEventInput`, `SampleResultInput`,
-  `SWPPPInput`, `BMPInput`.
-- `POST/PUT/DELETE /api/npdes-permits{/:id}` + `/revoke`.
-- `POST/PUT/DELETE /api/discharge-points{/:id}` + `/decommission` +
-  `/reactivate`.
-- `POST/PUT/DELETE /api/ww-sample-events{/:id}` + `/finalize`.
-- `POST /api/ww-sample-results` + `DELETE /api/ww-sample-results/{id}`.
-- `POST/PUT/DELETE /api/sw-swpps{/:id}`.
-- `POST/PUT/DELETE /api/sw-bmps{/:id}`.
-- List routes via `entityRoutes(...)` for each.
+- `internal/repository/clean_water.go` — **no** `NPDESPermitInput`; NPDES
+  reuses the existing `PermitInput` in `permit.go`. The new inputs are:
+  - `DischargePointInput` (+ `/decommission` + `/reactivate` actions)
+  - `WaterSampleEventInput` (+ `/finalize` action)
+  - `WaterSampleResultInput`
+  - `SWPPPInput`
+  - `BMPInput`
+- Routes via the existing `entityRoutes(...)` helper:
+  - `POST/PUT/DELETE /api/discharge-points{/:id}` + `/decommission` +
+    `/reactivate`
+  - `POST/PUT/DELETE /api/ww-sample-events{/:id}` + `/finalize`
+  - `POST /api/ww-sample-results` + `DELETE /api/ww-sample-results/{id}`
+  - `POST/PUT/DELETE /api/swpps{/:id}`
+  - `POST/PUT/DELETE /api/bmps{/:id}`
 
 ### Frontend
 
-Match Module B's depth:
-- **NPDES Permits** — list/detail/form, status actions (revoke).
-- **Discharge Points** — list/detail/form, status actions
-  (decommission/reactivate), `EntitySelector` for npdes_permit.
-- **Sample Events + Results** — sample events list + detail; Results entered
-  via a modal on the event detail page (bulk-friendly grid: one parameter per
+- **NPDES Permits** — reuse the existing `PermitList/Detail/Form` pages;
+  filter by `permit_type_id IN (10, 11, 12, 13)` via a new list view.
+  No new page components for permits themselves.
+- **Discharge Points** — new list/detail/form with status actions and an
+  `EntitySelector` for the governing `permits` row.
+- **Water Sample Events + Results** — new list/detail. Results entered via
+  a modal on the event detail page (bulk-friendly grid: one parameter per
   row with result + qualifier).
-- **SWPPPs** — list/detail/form. BMPs managed via a modal on SWPPP detail.
-- Sidebar: new **💧 Clean Water** group containing the four primary entries
-  (or one "Clean Water" icon pointing to a tabbed landing page — decide in
-  Phase 1 build).
+- **SWPPPs** — new list/detail/form. BMPs managed via a modal on SWPPP
+  detail.
+- Sidebar: new **💧 Clean Water** group. Decision on four entries vs tabbed
+  landing page still deferred to build time (see open decision below).
 
 ### Tests
 
-- Repository: CRUD + audit parity with Module B's tests.
-- Server: E2E via httptest covering the create-permit → add discharge-point
-  → add sample-event → add sample-results path.
-- Seed data: migration test confirms `ww_parameters` has ≥30 rows.
+- `internal/database/migrate_test.go` — verify `module_d_clean_water.sql`
+  loads after the permits + industrial-waste modules; confirm no duplicate
+  `CREATE TABLE` collisions with pre-existing installs.
+- Repository: CRUD + audit parity with Module B's tests for the 5 new
+  entity types.
+- Server: E2E via `httptest` covering
+  `create NPDES permit → add discharge point → add sample event → add
+  sample results` and `create SWPPP → add BMPs → link to stormwater
+  outfall` paths.
+- Seed data: migration test confirms `ww_parameters` has ≥100 rows
+  (126 priority + ~5 conventional + ~10 non-conventional).
 
 ---
 
@@ -417,10 +499,13 @@ form; no bespoke rendering engine.
 
 ## Suggested build order
 
-1. **Phase 0** — Ontology v3.2 review + PR. One work unit.
-2. **Phase 1** — Module D SQL + Go repo + API + frontend. Biggest unit
-   (3–4 work units). Parallelizable only at the frontend-page level once
-   the backend lands.
+1. **Phase 0** — Ontology v3.2 review + PR. One work unit. **Done
+   2026-04-21, commit `5598c8d`.**
+2. **Phase 1** — Module D SQL relocation + gap-fill + Go repo + API +
+   frontend. ~2–3 work units (revised down from 3–4 after the audit;
+   NPDES permit pages reuse existing Permit pages, and ~9 `ww_*` tables
+   relocate rather than requiring fresh design). Parallelizable at the
+   frontend-page level once the SQL and Go layers land.
 3. **Phase 2** — CSV import (framework + employees + chemicals + training).
    ~2 work units.
 4. **Phase 4** — OSHA PDFs. ~1.5 work units (introspect + three fills + UI
@@ -442,7 +527,12 @@ form; no bespoke rendering engine.
   tabbed landing page, or a subdivided group like the Custom Tables group
   we shipped in schema-builder Phase 4. Defer to Phase 1 build-time when
   the UI shape is clearer.
-- [ ] **Parameter lookup: flat `ww_parameters` vs typed
-  `water_pollutants` / `water_pollutant_types` split.** Module B uses the
-  split pattern for air pollutants. Revisit while writing the schema in
-  Phase 1 — easier to decide with the seed data in front of us.
+- [x] **Parameter lookup: flat `ww_parameters` vs typed
+  `water_pollutants` / `water_pollutant_types` split.** _Resolved
+  2026-04-21:_ keep `ww_parameters` flat (the table already exists in
+  `module_industrial_waste_streams.sql`) and add a pollutant-type
+  discriminator column during the Phase 1 relocation. This matches the
+  v3.2 `ehs:WaterPollutant` taxonomy (conventional / priority /
+  non-conventional / WET) without duplicating the reference-table
+  machinery Module B needs because air pollutants can belong to multiple
+  types simultaneously (HAP + VOC), which is not true of water pollutants.
