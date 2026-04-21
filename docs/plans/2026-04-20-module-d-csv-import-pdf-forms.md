@@ -69,6 +69,54 @@ Locked in 2026-04-20 unless noted.
 Extend `docs/ontology/ehs-ontology-v3.1.ttl` → `ehs-ontology-v3.2.ttl`.
 Pattern mirrors the existing CAA coverage (Module B's ontology depth).
 
+### Progress (2026-04-20 — in-flight, local commits only)
+
+**Landed in local commit `b2819cd` (not yet pushed):**
+
+- Archived v3.1 → `docs/ontology/.archive/ehs-ontology-v3.1.ttl`; new file
+  `ehs-ontology-v3.2.ttl` is live.
+- Bumped `owl:versionInfo` to 3.2 in both header blocks; updated
+  `dcterms:date`; appended a v3.2 additions list to the header rdfs:comment.
+- 12 new CWA classes in 4 blocks:
+  - **Water pollutant taxonomy** (5): `WaterPollutant` →
+    `ConventionalPollutant` / `PriorityPollutant` / `NonConventionalPollutant`
+    → `WholeEffluentToxicity`.
+  - **Physical water infrastructure** (3): `DischargePoint`,
+    `StormwaterOutfall` (subClassOf `DischargePoint`), `MonitoringLocation`.
+  - **Water control equipment** (2): `WaterControlDevice` (new umbrella,
+    broader than air's `ControlDevice`); `WastewaterTreatmentUnit` now a
+    subClassOf `WaterControlDevice`.
+  - **Stormwater planning** (2): `SWPPP`, `BestManagementPractice`.
+- Restructured the file to free up the letter D for CWA: previous
+  "MODULE D: EMPLOYEE INCIDENT MANAGEMENT" section renamed to
+  "OPERATIONAL: EMPLOYEE INCIDENT MANAGEMENT" (content unchanged).
+  Fixed the one stale "(Module D)" reference in
+  `ehs:alignsWithRecordingCriteria`'s definition.
+
+**Next when we resume:**
+
+1. **Regulatory-program classes** — three classes, mirrors the shape of
+   Module B's `TitleVPermit` / `FESOP`:
+   - `ehs:NPDESPermit` (subClassOf `ehs:Permit`)
+   - `ehs:PretreatmentStandard` (40 CFR 403 categorical)
+   - `ehs:POTWDischargePermit` (indirect-discharge, local authority)
+2. **Object properties** — six relations tying the new classes together:
+   - `ehs:dischargesTo` (EmissionUnit → DischargePoint)
+   - `ehs:monitoredAt` (DischargePoint → MonitoringLocation)
+   - `ehs:sampledFor` (MonitoringLocation → WaterPollutant)
+   - `ehs:subjectToPermit` (DischargePoint → NPDESPermit /
+     POTWDischargePermit)
+   - `ehs:coveredBy` (StormwaterOutfall → SWPPP)
+   - `ehs:implements` (SWPPP → BestManagementPractice)
+3. **Reconciliation pass** — narrow `ehs:WaterwayProximity` to site
+   geography; add cross-references in `ehs:ReleaseToEnvironment` /
+   `ehs:ChemicalIncident` to the new `NPDESPermit` chain.
+4. **User side:** Adam is double-checking the compliance law book
+   (specifically the SPCC context referenced in `WaterControlDevice` and
+   the oil-release → Section 311 notification chain).
+5. Once Phase 0 is done we squash/push the v3.2 commits together and
+   move to Phase 1 (`module_d_clean_water.sql`).
+
 ### New classes
 
 - **`ehs:WaterPollutant`** (subClassOf `ehs:Pollutant`) — pollutant regulated
