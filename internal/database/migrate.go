@@ -24,6 +24,11 @@ var moduleOrder = []string{
 	"module_b_title_v_caa.sql",
 	"module_inspections_audits.sql",
 	"module_permits_licenses.sql",
+	// Module D loads before waste streams because the (surviving) waste
+	// streams dashboard view v_waste_compliance_dashboard references ww_*
+	// tables that now live in module_d_clean_water.sql. Module D's own
+	// FKs only reach backward into modules C, B, and permits/licenses.
+	"module_d_clean_water.sql",
 	"module_industrial_waste_streams.sql",
 	"module_ppe.sql",
 }
