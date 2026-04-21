@@ -35,10 +35,27 @@ func (s *Server) schemaRoutes() {
 
 	// -- Record CRUD (any authed user) --
 	s.mux.HandleFunc("GET    /api/records/{slug}", s.handleRecordList)
+	s.mux.HandleFunc("GET    /api/records/{slug}/_schema", s.handleRecordSchema)
 	s.mux.HandleFunc("GET    /api/records/{slug}/{id}", s.handleRecordGet)
 	s.mux.HandleFunc("POST   /api/records/{slug}", s.handleRecordCreate)
 	s.mux.HandleFunc("PUT    /api/records/{slug}/{id}", s.handleRecordUpdate)
 	s.mux.HandleFunc("DELETE /api/records/{slug}/{id}", s.handleRecordDelete)
+}
+
+// handleRecordSchema returns the active custom table's metadata
+// (fields + relations) scoped to a slug. Accessible to any authed
+// user so the generic record UI can render without admin rights;
+// the write-side schema routes stay admin-only.
+func (s *Server) handleRecordSchema(w http.ResponseWriter, r *http.Request) {
+	user := s.requireAuth(w, r)
+	if user == nil {
+		return
+	}
+	tbl, ok := s.resolveActiveSlug(w, r)
+	if !ok {
+		return
+	}
+	writeJSON(w, tbl)
 }
 
 // ============================================================
@@ -275,18 +292,19 @@ func (s *Server) handleRecordList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	page := 1
+	if v := r.URL.Query().Get("page"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			page = n
+		}
+	}
+	perPage := parsePerPage(r)
+
 	opts := schemabuilder.SelectOpts{
 		Search:        r.URL.Query().Get("q"),
 		JoinRelations: true,
-	}
-	if pageParam := r.URL.Query().Get("page"); pageParam != "" {
-		if n, err := strconv.Atoi(pageParam); err == nil && n > 1 {
-			perPage := parsePerPage(r)
-			opts.Limit = perPage
-			opts.Offset = (n - 1) * perPage
-		}
-	} else {
-		opts.Limit = parsePerPage(r)
+		Limit:         perPage,
+		Offset:        (page - 1) * perPage,
 	}
 	if est := r.URL.Query().Get("establishment_id"); est != "" {
 		if n, err := strconv.ParseInt(est, 10, 64); err == nil {
@@ -299,10 +317,14 @@ func (s *Server) handleRecordList(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	total, err := s.db.QueryVal(countSQL, countArgs...)
+	totalVal, err := s.db.QueryVal(countSQL, countArgs...)
 	if err != nil {
 		writeError(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+	var total int64
+	if totalVal != nil {
+		total, _ = totalVal.(int64)
 	}
 
 	listSQL, listArgs, err := s.schemaQB.Select(tbl.ID, opts)
@@ -320,9 +342,16 @@ func (s *Server) handleRecordList(w http.ResponseWriter, r *http.Request) {
 	for _, r := range rows {
 		out = append(out, r)
 	}
+	totalPages := int(total) / perPage
+	if int(total)%perPage != 0 {
+		totalPages++
+	}
 	writeJSON(w, map[string]any{
-		"data":  out,
-		"total": total,
+		"data":        out,
+		"total":       total,
+		"page":        page,
+		"per_page":    perPage,
+		"total_pages": totalPages,
 	})
 }
 

@@ -40,6 +40,9 @@ import StorageLocationForm from './pages/modules/StorageLocationForm';
 import PPEList from './pages/modules/PPEList';
 import PPEDetail from './pages/modules/PPEDetail';
 import PPEForm from './pages/modules/PPEForm';
+import GenericRecordList from './pages/custom/GenericRecordList';
+import GenericRecordDetail from './pages/custom/GenericRecordDetail';
+import GenericRecordForm from './pages/custom/GenericRecordForm';
 import UsersList from './pages/admin/UsersList';
 import UserForm from './pages/admin/UserForm';
 import { AdminOnly } from './components/AdminOnly';
@@ -125,6 +128,13 @@ function AppRoutes() {
           <Route path="storage-locations/new" element={<StorageLocationForm />} />
           <Route path="storage-locations/:id" element={<StorageLocationDetail />} />
           <Route path="storage-locations/:id/edit" element={<StorageLocationForm />} />
+
+          {/* Custom (user-built) tables — a single set of metadata-driven
+              components serves every cx_* table. */}
+          <Route path="custom/:slug" element={<GenericRecordList />} />
+          <Route path="custom/:slug/new" element={<GenericRecordForm />} />
+          <Route path="custom/:slug/:id" element={<GenericRecordDetail />} />
+          <Route path="custom/:slug/:id/edit" element={<GenericRecordForm />} />
 
           <Route path="account" element={<Account />} />
 

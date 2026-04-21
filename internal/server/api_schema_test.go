@@ -437,6 +437,44 @@ func TestSchemaAPI_InactiveTableIs404OnRecordRoutes(t *testing.T) {
 	}
 }
 
+func TestSchemaAPI_RecordSchemaEndpointAccessibleToAnyAuthedUser(t *testing.T) {
+	tc := newTestServerWithDB(t)
+	token := seedNonAdmin(t, tc)
+
+	w := tc.doJSON(t, "POST", "/api/schema/tables", jsonMap{
+		"name": "projects", "display_name": "Projects",
+	})
+	var createRes jsonMap
+	decodeJSON(t, w, &createRes)
+	w = tc.doJSON(t, "POST", "/api/schema/tables/"+idPath(int64(createRes["id"].(float64)))+"/fields", jsonMap{
+		"name": "title", "display_name": "Title", "field_type": "text",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("add field: %d", w.Code)
+	}
+
+	// Non-admin hits /api/records/projects/_schema → 200 with metadata.
+	w = tc.doJSONAs(t, token, "GET", "/api/records/projects/_schema", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("want 200, got %d; %s", w.Code, w.Body.String())
+	}
+	var tbl jsonMap
+	decodeJSON(t, w, &tbl)
+	if tbl["name"] != "projects" {
+		t.Errorf("bad metadata: %+v", tbl)
+	}
+	fields, _ := tbl["fields"].([]any)
+	if len(fields) != 1 {
+		t.Errorf("want 1 field, got %d", len(fields))
+	}
+
+	// Unknown slug → 404 via this endpoint too.
+	w = tc.doJSONAs(t, token, "GET", "/api/records/ghost/_schema", nil)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("unknown slug: want 404, got %d", w.Code)
+	}
+}
+
 func TestSchemaAPI_NonAdminCannotListVersionsOrGetSchema(t *testing.T) {
 	tc := newTestServerWithDB(t)
 	token := seedNonAdmin(t, tc)
