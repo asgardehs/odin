@@ -193,10 +193,10 @@ CREATE TABLE IF NOT EXISTS discharge_points (
     UNIQUE(establishment_id, outfall_code)
 );
 
-CREATE INDEX idx_discharge_points_establishment ON discharge_points(establishment_id);
-CREATE INDEX idx_discharge_points_permit ON discharge_points(permit_id);
-CREATE INDEX idx_discharge_points_status ON discharge_points(status);
-CREATE INDEX idx_discharge_points_type ON discharge_points(discharge_type);
+CREATE INDEX IF NOT EXISTS idx_discharge_points_establishment ON discharge_points(establishment_id);
+CREATE INDEX IF NOT EXISTS idx_discharge_points_permit ON discharge_points(permit_id);
+CREATE INDEX IF NOT EXISTS idx_discharge_points_status ON discharge_points(status);
+CREATE INDEX IF NOT EXISTS idx_discharge_points_type ON discharge_points(discharge_type);
 
 
 -- ----------------------------------------------------------------------------
@@ -248,10 +248,10 @@ CREATE TABLE IF NOT EXISTS ww_monitoring_locations (
     UNIQUE(establishment_id, location_code)
 );
 
-CREATE INDEX idx_ww_locations_establishment ON ww_monitoring_locations(establishment_id);
-CREATE INDEX idx_ww_locations_permit ON ww_monitoring_locations(permit_id);
-CREATE INDEX idx_ww_locations_emission_unit ON ww_monitoring_locations(emission_unit_id);
-CREATE INDEX idx_ww_locations_discharge_point ON ww_monitoring_locations(discharge_point_id);
+CREATE INDEX IF NOT EXISTS idx_ww_locations_establishment ON ww_monitoring_locations(establishment_id);
+CREATE INDEX IF NOT EXISTS idx_ww_locations_permit ON ww_monitoring_locations(permit_id);
+CREATE INDEX IF NOT EXISTS idx_ww_locations_emission_unit ON ww_monitoring_locations(emission_unit_id);
+CREATE INDEX IF NOT EXISTS idx_ww_locations_discharge_point ON ww_monitoring_locations(discharge_point_id);
 
 
 -- ============================================================================
@@ -294,8 +294,8 @@ CREATE TABLE IF NOT EXISTS ww_parameters (
     FOREIGN KEY (pollutant_type_code) REFERENCES water_pollutant_types(code)
 );
 
-CREATE INDEX idx_ww_parameters_category ON ww_parameters(parameter_category);
-CREATE INDEX idx_ww_parameters_type ON ww_parameters(pollutant_type_code);
+CREATE INDEX IF NOT EXISTS idx_ww_parameters_category ON ww_parameters(parameter_category);
+CREATE INDEX IF NOT EXISTS idx_ww_parameters_type ON ww_parameters(pollutant_type_code);
 
 
 -- ============================================================================
@@ -419,10 +419,10 @@ CREATE TABLE IF NOT EXISTS ww_monitoring_requirements (
     FOREIGN KEY (permit_condition_id) REFERENCES permit_conditions(id)
 );
 
-CREATE INDEX idx_ww_requirements_establishment ON ww_monitoring_requirements(establishment_id);
-CREATE INDEX idx_ww_requirements_location ON ww_monitoring_requirements(location_id);
-CREATE INDEX idx_ww_requirements_parameter ON ww_monitoring_requirements(parameter_id);
-CREATE INDEX idx_ww_requirements_permit ON ww_monitoring_requirements(permit_id);
+CREATE INDEX IF NOT EXISTS idx_ww_requirements_establishment ON ww_monitoring_requirements(establishment_id);
+CREATE INDEX IF NOT EXISTS idx_ww_requirements_location ON ww_monitoring_requirements(location_id);
+CREATE INDEX IF NOT EXISTS idx_ww_requirements_parameter ON ww_monitoring_requirements(parameter_id);
+CREATE INDEX IF NOT EXISTS idx_ww_requirements_permit ON ww_monitoring_requirements(permit_id);
 
 
 -- ============================================================================
@@ -463,8 +463,8 @@ CREATE TABLE IF NOT EXISTS ww_equipment (
     UNIQUE(establishment_id, equipment_code)
 );
 
-CREATE INDEX idx_ww_equipment_establishment ON ww_equipment(establishment_id);
-CREATE INDEX idx_ww_equipment_calibration_due ON ww_equipment(next_calibration_due);
+CREATE INDEX IF NOT EXISTS idx_ww_equipment_establishment ON ww_equipment(establishment_id);
+CREATE INDEX IF NOT EXISTS idx_ww_equipment_calibration_due ON ww_equipment(next_calibration_due);
 
 
 -- ============================================================================
@@ -503,8 +503,8 @@ CREATE TABLE IF NOT EXISTS ww_equipment_calibrations (
     FOREIGN KEY (calibrated_by_employee_id) REFERENCES employees(id)
 );
 
-CREATE INDEX idx_ww_calibrations_equipment ON ww_equipment_calibrations(equipment_id);
-CREATE INDEX idx_ww_calibrations_date ON ww_equipment_calibrations(calibration_date);
+CREATE INDEX IF NOT EXISTS idx_ww_calibrations_equipment ON ww_equipment_calibrations(equipment_id);
+CREATE INDEX IF NOT EXISTS idx_ww_calibrations_date ON ww_equipment_calibrations(calibration_date);
 
 
 -- ============================================================================
@@ -547,7 +547,7 @@ CREATE TABLE IF NOT EXISTS ww_labs (
     updated_at TEXT DEFAULT (datetime('now'))
 );
 
-CREATE INDEX idx_ww_labs_active ON ww_labs(is_active);
+CREATE INDEX IF NOT EXISTS idx_ww_labs_active ON ww_labs(is_active);
 
 
 -- ============================================================================
@@ -591,9 +591,9 @@ CREATE TABLE IF NOT EXISTS ww_lab_submissions (
     FOREIGN KEY (lab_id) REFERENCES ww_labs(id)
 );
 
-CREATE INDEX idx_ww_lab_submissions_establishment ON ww_lab_submissions(establishment_id);
-CREATE INDEX idx_ww_lab_submissions_lab ON ww_lab_submissions(lab_id);
-CREATE INDEX idx_ww_lab_submissions_status ON ww_lab_submissions(status);
+CREATE INDEX IF NOT EXISTS idx_ww_lab_submissions_establishment ON ww_lab_submissions(establishment_id);
+CREATE INDEX IF NOT EXISTS idx_ww_lab_submissions_lab ON ww_lab_submissions(lab_id);
+CREATE INDEX IF NOT EXISTS idx_ww_lab_submissions_status ON ww_lab_submissions(status);
 
 
 -- ============================================================================
@@ -649,11 +649,11 @@ CREATE TABLE IF NOT EXISTS ww_sampling_events (
     FOREIGN KEY (lab_submission_id) REFERENCES ww_lab_submissions(id)
 );
 
-CREATE INDEX idx_ww_events_establishment ON ww_sampling_events(establishment_id);
-CREATE INDEX idx_ww_events_location ON ww_sampling_events(location_id);
-CREATE INDEX idx_ww_events_date ON ww_sampling_events(sample_date);
-CREATE INDEX idx_ww_events_lab_submission ON ww_sampling_events(lab_submission_id);
-CREATE INDEX idx_ww_events_status ON ww_sampling_events(status);
+CREATE INDEX IF NOT EXISTS idx_ww_events_establishment ON ww_sampling_events(establishment_id);
+CREATE INDEX IF NOT EXISTS idx_ww_events_location ON ww_sampling_events(location_id);
+CREATE INDEX IF NOT EXISTS idx_ww_events_date ON ww_sampling_events(sample_date);
+CREATE INDEX IF NOT EXISTS idx_ww_events_lab_submission ON ww_sampling_events(lab_submission_id);
+CREATE INDEX IF NOT EXISTS idx_ww_events_status ON ww_sampling_events(status);
 
 
 -- ============================================================================
@@ -696,9 +696,9 @@ CREATE TABLE IF NOT EXISTS ww_sample_results (
     FOREIGN KEY (duplicate_of_result_id) REFERENCES ww_sample_results(id)
 );
 
-CREATE INDEX idx_ww_results_event ON ww_sample_results(event_id);
-CREATE INDEX idx_ww_results_parameter ON ww_sample_results(parameter_id);
-CREATE INDEX idx_ww_results_date ON ww_sample_results(analyzed_date);
+CREATE INDEX IF NOT EXISTS idx_ww_results_event ON ww_sample_results(event_id);
+CREATE INDEX IF NOT EXISTS idx_ww_results_parameter ON ww_sample_results(parameter_id);
+CREATE INDEX IF NOT EXISTS idx_ww_results_date ON ww_sample_results(analyzed_date);
 
 
 -- ============================================================================
@@ -739,9 +739,9 @@ CREATE TABLE IF NOT EXISTS ww_flow_measurements (
     FOREIGN KEY (equipment_id) REFERENCES ww_equipment(id)
 );
 
-CREATE INDEX idx_ww_flow_establishment ON ww_flow_measurements(establishment_id);
-CREATE INDEX idx_ww_flow_location ON ww_flow_measurements(location_id);
-CREATE INDEX idx_ww_flow_date ON ww_flow_measurements(measurement_date);
+CREATE INDEX IF NOT EXISTS idx_ww_flow_establishment ON ww_flow_measurements(establishment_id);
+CREATE INDEX IF NOT EXISTS idx_ww_flow_location ON ww_flow_measurements(location_id);
+CREATE INDEX IF NOT EXISTS idx_ww_flow_date ON ww_flow_measurements(measurement_date);
 
 
 -- ============================================================================
@@ -792,9 +792,9 @@ CREATE TABLE IF NOT EXISTS sw_swpps (
     FOREIGN KEY (permit_id) REFERENCES permits(id)
 );
 
-CREATE INDEX idx_sw_swpps_establishment ON sw_swpps(establishment_id);
-CREATE INDEX idx_sw_swpps_status ON sw_swpps(status);
-CREATE INDEX idx_sw_swpps_next_review ON sw_swpps(next_annual_review_due);
+CREATE INDEX IF NOT EXISTS idx_sw_swpps_establishment ON sw_swpps(establishment_id);
+CREATE INDEX IF NOT EXISTS idx_sw_swpps_status ON sw_swpps(status);
+CREATE INDEX IF NOT EXISTS idx_sw_swpps_next_review ON sw_swpps(next_annual_review_due);
 
 
 -- ============================================================================
@@ -847,10 +847,10 @@ CREATE TABLE IF NOT EXISTS sw_bmps (
     UNIQUE(swppp_id, bmp_code)
 );
 
-CREATE INDEX idx_sw_bmps_swppp ON sw_bmps(swppp_id);
-CREATE INDEX idx_sw_bmps_establishment ON sw_bmps(establishment_id);
-CREATE INDEX idx_sw_bmps_status ON sw_bmps(status);
-CREATE INDEX idx_sw_bmps_next_inspection ON sw_bmps(next_inspection_due);
+CREATE INDEX IF NOT EXISTS idx_sw_bmps_swppp ON sw_bmps(swppp_id);
+CREATE INDEX IF NOT EXISTS idx_sw_bmps_establishment ON sw_bmps(establishment_id);
+CREATE INDEX IF NOT EXISTS idx_sw_bmps_status ON sw_bmps(status);
+CREATE INDEX IF NOT EXISTS idx_sw_bmps_next_inspection ON sw_bmps(next_inspection_due);
 
 
 -- ============================================================================
@@ -891,8 +891,8 @@ CREATE TABLE IF NOT EXISTS sw_outfall_benchmarks (
     UNIQUE(sector_code, parameter_id, msgp_version)
 );
 
-CREATE INDEX idx_sw_benchmarks_sector ON sw_outfall_benchmarks(sector_code);
-CREATE INDEX idx_sw_benchmarks_parameter ON sw_outfall_benchmarks(parameter_id);
+CREATE INDEX IF NOT EXISTS idx_sw_benchmarks_sector ON sw_outfall_benchmarks(sector_code);
+CREATE INDEX IF NOT EXISTS idx_sw_benchmarks_parameter ON sw_outfall_benchmarks(parameter_id);
 
 
 -- ============================================================================
