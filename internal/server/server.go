@@ -10,6 +10,7 @@ import (
 	"github.com/asgardehs/odin/internal/audit"
 	"github.com/asgardehs/odin/internal/auth"
 	"github.com/asgardehs/odin/internal/database"
+	"github.com/asgardehs/odin/internal/importer"
 	"github.com/asgardehs/odin/internal/repository"
 	"github.com/asgardehs/odin/internal/schemabuilder"
 )
@@ -24,6 +25,7 @@ type Server struct {
 	repo            *repository.Repo
 	schemaExec      *schemabuilder.Executor
 	schemaQB        *schemabuilder.QueryBuilder
+	importer        *importer.Engine
 	users           *auth.UserStore
 	sessions        *auth.SessionStore
 	recovery        *auth.RecoveryStore
@@ -43,6 +45,10 @@ func New(frontend fs.FS, authenticator auth.Authenticator, auditStore *audit.Sto
 		schemaExec = schemabuilder.NewExecutor(db)
 		schemaQB = schemabuilder.NewQueryBuilder(schemaExec)
 	}
+	var importEngine *importer.Engine
+	if db != nil && auditStore != nil {
+		importEngine = &importer.Engine{DB: db, Audit: auditStore}
+	}
 	s := &Server{
 		mux:        http.NewServeMux(),
 		frontend:   frontend,
@@ -52,6 +58,7 @@ func New(frontend fs.FS, authenticator auth.Authenticator, auditStore *audit.Sto
 		repo:       repo,
 		schemaExec: schemaExec,
 		schemaQB:   schemaQB,
+		importer:   importEngine,
 		users:      users,
 		sessions:   sessions,
 		recovery:   recovery,
@@ -125,6 +132,7 @@ func (s *Server) routes() {
 	s.apiRoutes()
 	s.writeRoutes()
 	s.schemaRoutes()
+	s.importRoutes()
 
 	// Frontend: serve embedded SPA. Non-file paths fall back to index.html
 	// so React Router can handle client-side routes.
