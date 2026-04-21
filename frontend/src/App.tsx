@@ -31,6 +31,9 @@ import EmissionUnitForm from './pages/modules/EmissionUnitForm';
 import PermitList from './pages/modules/PermitList';
 import PermitDetail from './pages/modules/PermitDetail';
 import PermitForm from './pages/modules/PermitForm';
+import DischargePointList from './pages/modules/DischargePointList';
+import DischargePointDetail from './pages/modules/DischargePointDetail';
+import DischargePointForm from './pages/modules/DischargePointForm';
 import WasteList from './pages/modules/WasteList';
 import WasteDetail from './pages/modules/WasteDetail';
 import WasteForm from './pages/modules/WasteForm';
@@ -116,6 +119,11 @@ function AppRoutes() {
           <Route path="permits/new" element={<PermitForm />} />
           <Route path="permits/:id" element={<PermitDetail />} />
           <Route path="permits/:id/edit" element={<PermitForm />} />
+
+          <Route path="discharge-points" element={<DischargePointList />} />
+          <Route path="discharge-points/new" element={<DischargePointForm />} />
+          <Route path="discharge-points/:id" element={<DischargePointDetail />} />
+          <Route path="discharge-points/:id/edit" element={<DischargePointForm />} />
 
           <Route path="waste" element={<WasteList />} />
           <Route path="waste/new" element={<WasteForm />} />
