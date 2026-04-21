@@ -404,6 +404,147 @@ func (s *Server) writeRoutes() {
 		},
 	))
 
+	// -- Module D: Clean Water — Discharge Points --
+	s.mux.HandleFunc("POST /api/discharge-points", s.handleCreate(
+		func(user string, body []byte) (int64, error) {
+			var in repository.DischargePointInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return 0, err
+			}
+			return s.repo.CreateDischargePoint(user, in)
+		},
+	))
+	s.mux.HandleFunc("PUT /api/discharge-points/{id}", s.handleUpdate(
+		func(user string, id int64, body []byte) error {
+			var in repository.DischargePointInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return err
+			}
+			return s.repo.UpdateDischargePoint(user, id, in)
+		},
+	))
+	s.mux.HandleFunc("POST /api/discharge-points/{id}/decommission", s.handleAction(
+		func(user string, id int64, _ []byte) error {
+			return s.repo.DecommissionDischargePoint(user, id)
+		},
+	))
+	s.mux.HandleFunc("POST /api/discharge-points/{id}/reactivate", s.handleAction(
+		func(user string, id int64, _ []byte) error {
+			return s.repo.ReactivateDischargePoint(user, id)
+		},
+	))
+	s.mux.HandleFunc("DELETE /api/discharge-points/{id}", s.handleDelete(
+		func(user string, id int64) error {
+			return s.repo.DeleteDischargePoint(user, id)
+		},
+	))
+
+	// -- Module D: Clean Water — Water Sample Events --
+	s.mux.HandleFunc("POST /api/ww-sample-events", s.handleCreate(
+		func(user string, body []byte) (int64, error) {
+			var in repository.WaterSampleEventInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return 0, err
+			}
+			return s.repo.CreateWaterSampleEvent(user, in)
+		},
+	))
+	s.mux.HandleFunc("PUT /api/ww-sample-events/{id}", s.handleUpdate(
+		func(user string, id int64, body []byte) error {
+			var in repository.WaterSampleEventInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return err
+			}
+			return s.repo.UpdateWaterSampleEvent(user, id, in)
+		},
+	))
+	s.mux.HandleFunc("POST /api/ww-sample-events/{id}/finalize", s.handleAction(
+		func(user string, id int64, body []byte) error {
+			// Optional body: {"finalized_by_employee_id": N}. Empty body OK.
+			var payload struct {
+				FinalizedByEmployeeID *int64 `json:"finalized_by_employee_id,omitempty"`
+			}
+			if len(body) > 0 {
+				if err := json.Unmarshal(body, &payload); err != nil {
+					return err
+				}
+			}
+			return s.repo.FinalizeWaterSampleEvent(user, id, payload.FinalizedByEmployeeID)
+		},
+	))
+	s.mux.HandleFunc("DELETE /api/ww-sample-events/{id}", s.handleDelete(
+		func(user string, id int64) error {
+			return s.repo.DeleteWaterSampleEvent(user, id)
+		},
+	))
+
+	// -- Module D: Clean Water — Water Sample Results --
+	// Per plan: create + delete only; results are accessed via the parent event.
+	s.mux.HandleFunc("POST /api/ww-sample-results", s.handleCreate(
+		func(user string, body []byte) (int64, error) {
+			var in repository.WaterSampleResultInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return 0, err
+			}
+			return s.repo.CreateWaterSampleResult(user, in)
+		},
+	))
+	s.mux.HandleFunc("DELETE /api/ww-sample-results/{id}", s.handleDelete(
+		func(user string, id int64) error {
+			return s.repo.DeleteWaterSampleResult(user, id)
+		},
+	))
+
+	// -- Module D: Clean Water — SWPPPs --
+	s.mux.HandleFunc("POST /api/swpps", s.handleCreate(
+		func(user string, body []byte) (int64, error) {
+			var in repository.SWPPPInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return 0, err
+			}
+			return s.repo.CreateSWPPP(user, in)
+		},
+	))
+	s.mux.HandleFunc("PUT /api/swpps/{id}", s.handleUpdate(
+		func(user string, id int64, body []byte) error {
+			var in repository.SWPPPInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return err
+			}
+			return s.repo.UpdateSWPPP(user, id, in)
+		},
+	))
+	s.mux.HandleFunc("DELETE /api/swpps/{id}", s.handleDelete(
+		func(user string, id int64) error {
+			return s.repo.DeleteSWPPP(user, id)
+		},
+	))
+
+	// -- Module D: Clean Water — BMPs --
+	s.mux.HandleFunc("POST /api/bmps", s.handleCreate(
+		func(user string, body []byte) (int64, error) {
+			var in repository.BMPInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return 0, err
+			}
+			return s.repo.CreateBMP(user, in)
+		},
+	))
+	s.mux.HandleFunc("PUT /api/bmps/{id}", s.handleUpdate(
+		func(user string, id int64, body []byte) error {
+			var in repository.BMPInput
+			if err := json.Unmarshal(body, &in); err != nil {
+				return err
+			}
+			return s.repo.UpdateBMP(user, id, in)
+		},
+	))
+	s.mux.HandleFunc("DELETE /api/bmps/{id}", s.handleDelete(
+		func(user string, id int64) error {
+			return s.repo.DeleteBMP(user, id)
+		},
+	))
+
 	// -- Waste Streams --
 	// -- Chemical Inventory (sub-record on chemical detail) --
 	s.mux.HandleFunc("POST /api/chemical-inventory", s.handleCreate(

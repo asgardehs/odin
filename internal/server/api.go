@@ -306,6 +306,88 @@ func (s *Server) apiRoutes() {
 		"agency_code", "agency_name",
 	)
 
+	// -- Module D: Clean Water --
+
+	s.entityRoutes("/api/discharge-points", "discharge point",
+		`SELECT id, establishment_id, outfall_code, outfall_name,
+		        discharge_type, receiving_waterbody, receiving_waterbody_type,
+		        permit_id, stormwater_sector_code, swppp_id, status,
+		        is_impaired_water, tmdl_applies
+		 FROM discharge_points ORDER BY outfall_code LIMIT ? OFFSET ?`,
+		`SELECT COUNT(*) FROM discharge_points`,
+		`SELECT * FROM discharge_points WHERE id = ?`,
+		"outfall_code", "outfall_name", "receiving_waterbody",
+	)
+
+	s.entityRoutes("/api/ww-monitoring-locations", "monitoring location",
+		`SELECT id, establishment_id, location_code, location_name,
+		        location_type, discharge_point_id, permit_id, emission_unit_id,
+		        is_active, latitude, longitude
+		 FROM ww_monitoring_locations ORDER BY location_code LIMIT ? OFFSET ?`,
+		`SELECT COUNT(*) FROM ww_monitoring_locations`,
+		`SELECT * FROM ww_monitoring_locations WHERE id = ?`,
+		"location_code", "location_name",
+	)
+
+	s.entityRoutes("/api/ww-parameters", "water parameter",
+		`SELECT id, parameter_code, parameter_name, parameter_category,
+		        pollutant_type_code, cas_number, typical_units, typical_method,
+		        priority_pollutant, toxic_pollutant
+		 FROM ww_parameters ORDER BY parameter_category, parameter_name LIMIT ? OFFSET ?`,
+		`SELECT COUNT(*) FROM ww_parameters`,
+		`SELECT * FROM ww_parameters WHERE id = ?`,
+		"parameter_code", "parameter_name", "cas_number",
+	)
+
+	s.entityRoutes("/api/ww-sample-events", "water sample event",
+		`SELECT id, establishment_id, location_id, event_number,
+		        sample_date, sample_time, sample_type, weather_conditions,
+		        lab_submission_id, status, sampled_by_employee_id
+		 FROM ww_sampling_events ORDER BY sample_date DESC LIMIT ? OFFSET ?`,
+		`SELECT COUNT(*) FROM ww_sampling_events`,
+		`SELECT * FROM ww_sampling_events WHERE id = ?`,
+		"event_number",
+	)
+
+	// Results don't have a top-level list page — they're accessed via the
+	// parent event — but the /api/ww-sample-results/{id} GET is still useful
+	// for audit trail links.
+	s.entityRoutes("/api/ww-sample-results", "water sample result",
+		`SELECT id, event_id, parameter_id, result_value, result_units,
+		        result_qualifier, detection_limit, analyzed_date, analyzed_by
+		 FROM ww_sample_results ORDER BY id DESC LIMIT ? OFFSET ?`,
+		`SELECT COUNT(*) FROM ww_sample_results`,
+		`SELECT * FROM ww_sample_results WHERE id = ?`,
+	)
+
+	s.entityRoutes("/api/swpps", "SWPPP",
+		`SELECT id, establishment_id, revision_number, effective_date,
+		        next_annual_review_due, pollution_prevention_team_lead_employee_id,
+		        permit_id, status, supersedes_swppp_id
+		 FROM sw_swpps ORDER BY effective_date DESC LIMIT ? OFFSET ?`,
+		`SELECT COUNT(*) FROM sw_swpps`,
+		`SELECT * FROM sw_swpps WHERE id = ?`,
+		"revision_number",
+	)
+
+	s.entityRoutes("/api/bmps", "BMP",
+		`SELECT id, swppp_id, establishment_id, bmp_code, bmp_name,
+		        bmp_type, bmp_subtype, inspection_frequency,
+		        responsible_role, status, next_inspection_due
+		 FROM sw_bmps ORDER BY bmp_code LIMIT ? OFFSET ?`,
+		`SELECT COUNT(*) FROM sw_bmps`,
+		`SELECT * FROM sw_bmps WHERE id = ?`,
+		"bmp_code", "bmp_name",
+	)
+
+	s.entityRoutes("/api/sw-industrial-sectors", "MSGP industrial sector",
+		`SELECT code, sic_prefix, name, msgp_part
+		 FROM sw_industrial_sectors ORDER BY code LIMIT ? OFFSET ?`,
+		`SELECT COUNT(*) FROM sw_industrial_sectors`,
+		`SELECT * FROM sw_industrial_sectors WHERE code = ?`,
+		"code", "name",
+	)
+
 	// -- Industrial Waste --
 
 	s.entityRoutes("/api/waste-streams", "waste stream",

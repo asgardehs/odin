@@ -547,3 +547,302 @@ func TestUserDeactivateReactivate(t *testing.T) {
 		t.Errorf("after reactivate is_active = %v, want true", row["is_active"])
 	}
 }
+
+// --- Clean Water (Module D) ---
+
+// createResource POSTs JSON body to path, asserts 201, and returns the new id.
+func createResource(t *testing.T, tc *testContext, path, body string) int64 {
+	t.Helper()
+	req := httptest.NewRequest("POST", path, bytes.NewBufferString(body))
+	tc.authRequest(req)
+	w := httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("POST %s = %d; %s", path, w.Code, w.Body.String())
+	}
+	var result map[string]any
+	json.NewDecoder(w.Body).Decode(&result)
+	return int64(result["id"].(float64))
+}
+
+// createNPDESPermit seeds an NPDES permit (permit_type_id = 10) on
+// establishment 1 and returns its id.
+func createNPDESPermit(t *testing.T, tc *testContext, permitNumber string) int64 {
+	t.Helper()
+	body := `{
+		"establishment_id": 1,
+		"permit_type_id": 10,
+		"permit_number": "` + permitNumber + `",
+		"permit_name": "NPDES Permit — test",
+		"effective_date": "2026-01-01",
+		"expiration_date": "2031-01-01"
+	}`
+	return createResource(t, tc, "/api/permits", body)
+}
+
+func TestCleanWaterDischargePointLifecycle(t *testing.T) {
+	tc := newTestServerWithDB(t)
+
+	permitID := createNPDESPermit(t, tc, "TX0012345")
+
+	// Create a discharge point attached to the permit.
+	createBody := `{
+		"establishment_id": 1,
+		"outfall_code": "OUTFALL-001",
+		"outfall_name": "Main process wastewater outfall",
+		"discharge_type": "process_wastewater",
+		"receiving_waterbody": "Cedar Creek",
+		"receiving_waterbody_type": "surface_water",
+		"permit_id": ` + itoa(int(permitID)) + `,
+		"latitude": 32.2831,
+		"longitude": -96.0908
+	}`
+	id := createResource(t, tc, "/api/discharge-points", createBody)
+
+	// Update.
+	updateBody := `{
+		"establishment_id": 1,
+		"outfall_code": "OUTFALL-001-R",
+		"outfall_name": "Main process outfall (renamed)",
+		"discharge_type": "process_wastewater",
+		"receiving_waterbody": "Cedar Creek",
+		"receiving_waterbody_type": "surface_water",
+		"permit_id": ` + itoa(int(permitID)) + `
+	}`
+	req := httptest.NewRequest("PUT", "/api/discharge-points/"+itoa(int(id)), bytes.NewBufferString(updateBody))
+	tc.authRequest(req)
+	w := httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("PUT = %d; %s", w.Code, w.Body.String())
+	}
+	if row := fetchRow(t, tc, "/api/discharge-points/"+itoa(int(id))); row["outfall_code"] != "OUTFALL-001-R" {
+		t.Errorf("after update outfall_code = %v, want OUTFALL-001-R", row["outfall_code"])
+	}
+
+	// Decommission → status flips + decommission_date stamped.
+	postAction(t, tc, "/api/discharge-points/"+itoa(int(id))+"/decommission")
+	row := fetchRow(t, tc, "/api/discharge-points/"+itoa(int(id)))
+	if row["status"] != "decommissioned" {
+		t.Errorf("after decommission status = %v, want decommissioned", row["status"])
+	}
+	if row["decommission_date"] == nil {
+		t.Errorf("after decommission expected decommission_date to be set")
+	}
+
+	// Reactivate → status flips back + decommission_date cleared.
+	postAction(t, tc, "/api/discharge-points/"+itoa(int(id))+"/reactivate")
+	row = fetchRow(t, tc, "/api/discharge-points/"+itoa(int(id)))
+	if row["status"] != "active" {
+		t.Errorf("after reactivate status = %v, want active", row["status"])
+	}
+	if row["decommission_date"] != nil {
+		t.Errorf("after reactivate decommission_date = %v, want nil", row["decommission_date"])
+	}
+
+	// Delete.
+	req = httptest.NewRequest("DELETE", "/api/discharge-points/"+itoa(int(id)), nil)
+	tc.authRequest(req)
+	w = httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("DELETE = %d; %s", w.Code, w.Body.String())
+	}
+
+	// Confirm gone.
+	req = httptest.NewRequest("GET", "/api/discharge-points/"+itoa(int(id)), nil)
+	tc.authRequest(req)
+	w = httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("after delete GET = %d, want 404", w.Code)
+	}
+}
+
+func TestCleanWaterSampleEventChain(t *testing.T) {
+	tc := newTestServerWithDB(t)
+
+	permitID := createNPDESPermit(t, tc, "TX0099999")
+
+	// Seed a monitoring location directly — there is no write endpoint for
+	// ww_monitoring_locations in the MVP (configuration table, admin-seeded
+	// via schema builder).
+	if err := tc.srv.db.ExecParams(
+		`INSERT INTO ww_monitoring_locations (establishment_id, location_code, location_name, location_type, permit_id)
+		 VALUES (?, ?, ?, ?, ?)`,
+		1, "MON-OUT-001", "Outfall 001 monitoring point", "outfall", permitID,
+	); err != nil {
+		t.Fatalf("seed ww_monitoring_locations: %v", err)
+	}
+	locationID := int64(1)
+
+	// Create a sample event.
+	eventBody := `{
+		"establishment_id": 1,
+		"location_id": ` + itoa(int(locationID)) + `,
+		"event_number": "SE-2026-001",
+		"sample_date": "2026-04-15",
+		"sample_time": "09:30",
+		"sample_type": "grab",
+		"weather_conditions": "dry"
+	}`
+	eventID := createResource(t, tc, "/api/ww-sample-events", eventBody)
+
+	// Add two results (using seed parameter ids: 1 = Cadmium Total, 20 = BOD5).
+	result1Body := `{
+		"event_id": ` + itoa(int(eventID)) + `,
+		"parameter_id": 1,
+		"result_value": 0.004,
+		"result_units": "mg/L",
+		"detection_limit": 0.001,
+		"reporting_limit": 0.002,
+		"analyzed_by": "Acme Labs",
+		"analysis_method": "EPA 200.7"
+	}`
+	r1 := createResource(t, tc, "/api/ww-sample-results", result1Body)
+
+	result2Body := `{
+		"event_id": ` + itoa(int(eventID)) + `,
+		"parameter_id": 20,
+		"result_value": 25.4,
+		"result_units": "mg/L",
+		"analyzed_by": "Acme Labs",
+		"analysis_method": "EPA 405.1"
+	}`
+	createResource(t, tc, "/api/ww-sample-results", result2Body)
+
+	// Finalize the event. Empty body should work (no employee mapping).
+	req := httptest.NewRequest("POST", "/api/ww-sample-events/"+itoa(int(eventID))+"/finalize", nil)
+	tc.authRequest(req)
+	w := httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("finalize = %d; %s", w.Code, w.Body.String())
+	}
+	row := fetchRow(t, tc, "/api/ww-sample-events/"+itoa(int(eventID)))
+	if row["status"] != "finalized" {
+		t.Errorf("after finalize status = %v, want finalized", row["status"])
+	}
+	if row["finalized_date"] == nil {
+		t.Errorf("after finalize expected finalized_date to be set")
+	}
+
+	// Delete one result (the cadmium one).
+	req = httptest.NewRequest("DELETE", "/api/ww-sample-results/"+itoa(int(r1)), nil)
+	tc.authRequest(req)
+	w = httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("delete result = %d; %s", w.Code, w.Body.String())
+	}
+
+	// Confirm gone.
+	req = httptest.NewRequest("GET", "/api/ww-sample-results/"+itoa(int(r1)), nil)
+	tc.authRequest(req)
+	w = httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("after result delete GET = %d, want 404", w.Code)
+	}
+
+	// Delete the event — cascades the remaining result via ON DELETE CASCADE.
+	req = httptest.NewRequest("DELETE", "/api/ww-sample-events/"+itoa(int(eventID)), nil)
+	tc.authRequest(req)
+	w = httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("delete event = %d; %s", w.Code, w.Body.String())
+	}
+}
+
+func TestCleanWaterSWPPPAndBMPs(t *testing.T) {
+	tc := newTestServerWithDB(t)
+
+	// SWPPP — MSGP typically, but permit is optional for this test.
+	swpppBody := `{
+		"establishment_id": 1,
+		"revision_number": "v1.0",
+		"effective_date": "2026-01-01",
+		"next_annual_review_due": "2027-01-01",
+		"document_path": "/docs/swppp/v1.0.pdf",
+		"site_description_summary": "Fabricated metal products facility, Sector AA."
+	}`
+	swpppID := createResource(t, tc, "/api/swpps", swpppBody)
+
+	// Two BMPs.
+	bmp1Body := `{
+		"swppp_id": ` + itoa(int(swpppID)) + `,
+		"establishment_id": 1,
+		"bmp_code": "BMP-COVER-001",
+		"bmp_name": "Cover outside material storage",
+		"bmp_type": "structural",
+		"bmp_subtype": "physical_coverage",
+		"description": "Tarp or roof over scrap metal storage piles.",
+		"inspection_frequency": "monthly",
+		"inspection_frequency_days": 30,
+		"responsible_role": "Facility Operator"
+	}`
+	bmp1ID := createResource(t, tc, "/api/bmps", bmp1Body)
+
+	bmp2Body := `{
+		"swppp_id": ` + itoa(int(swpppID)) + `,
+		"establishment_id": 1,
+		"bmp_code": "BMP-HSKP-001",
+		"bmp_name": "Good housekeeping — loading dock",
+		"bmp_type": "non_structural",
+		"bmp_subtype": "good_housekeeping",
+		"description": "Sweep and pick up debris daily from the loading dock area.",
+		"inspection_frequency": "weekly",
+		"inspection_frequency_days": 7,
+		"responsible_role": "EHS Manager"
+	}`
+	bmp2ID := createResource(t, tc, "/api/bmps", bmp2Body)
+
+	// Update BMP 1 — change inspection cadence.
+	bmp1Update := `{
+		"swppp_id": ` + itoa(int(swpppID)) + `,
+		"establishment_id": 1,
+		"bmp_code": "BMP-COVER-001",
+		"bmp_name": "Cover outside material storage (updated)",
+		"bmp_type": "structural",
+		"description": "Tarp or roof over scrap metal storage piles. Inspect after every rain event.",
+		"inspection_frequency": "storm_event",
+		"inspection_frequency_days": 1,
+		"responsible_role": "Facility Operator"
+	}`
+	req := httptest.NewRequest("PUT", "/api/bmps/"+itoa(int(bmp1ID)), bytes.NewBufferString(bmp1Update))
+	tc.authRequest(req)
+	w := httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("PUT bmp = %d; %s", w.Code, w.Body.String())
+	}
+	if row := fetchRow(t, tc, "/api/bmps/"+itoa(int(bmp1ID))); row["inspection_frequency"] != "storm_event" {
+		t.Errorf("after BMP update inspection_frequency = %v, want storm_event", row["inspection_frequency"])
+	}
+
+	// Delete BMP 2.
+	req = httptest.NewRequest("DELETE", "/api/bmps/"+itoa(int(bmp2ID)), nil)
+	tc.authRequest(req)
+	w = httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("DELETE bmp = %d; %s", w.Code, w.Body.String())
+	}
+
+	// SWPPP list should show the one we created.
+	req = httptest.NewRequest("GET", "/api/swpps", nil)
+	tc.authRequest(req)
+	w = httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /api/swpps = %d; %s", w.Code, w.Body.String())
+	}
+	var list struct {
+		Total int64 `json:"total"`
+	}
+	json.NewDecoder(w.Body).Decode(&list)
+	if list.Total < 1 {
+		t.Errorf("expected >=1 SWPPP, got %d", list.Total)
+	}
+}
