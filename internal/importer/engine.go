@@ -84,18 +84,26 @@ var ErrUnknownModule = errors.New("unknown import module")
 // initial validation pass, persists everything in _imports, and returns
 // the preview payload. Every Upload call also lazily sweeps expired rows.
 func (e *Engine) Upload(module, user, filename string, r io.Reader, targetEstablishmentID *int64) (*PreviewResponse, error) {
-	imp, ok := Get(module)
-	if !ok {
-		return nil, ErrUnknownModule
-	}
-
 	limited := io.LimitReader(r, MaxFileBytes+1)
 	headers, rows, err := parseCSV(limited)
 	if err != nil {
 		return nil, fmt.Errorf("importer: parse csv: %w", err)
 	}
+	return e.UploadParsed(module, user, filename, headers, rows, targetEstablishmentID)
+}
+
+// UploadParsed is the shared entrypoint for already-parsed payloads. The
+// CSV path calls it after parseCSV; the XLSX path in internal/server/api_import.go
+// calls it after handing the workbook off to ratatoskr. Everything after
+// parsing — mapping suggestion, validation, _imports persistence — is
+// identical regardless of the source format.
+func (e *Engine) UploadParsed(module, user, filename string, headers []string, rows []map[string]string, targetEstablishmentID *int64) (*PreviewResponse, error) {
+	imp, ok := Get(module)
+	if !ok {
+		return nil, ErrUnknownModule
+	}
 	if len(rows) == 0 {
-		return nil, errors.New("importer: csv has no data rows")
+		return nil, errors.New("importer: no data rows")
 	}
 
 	mapping := SuggestMapping(headers, imp.TargetFields())
@@ -397,7 +405,9 @@ func validateAll(
 	mapping map[string]string,
 	ctx RowContext,
 ) []ValidationError {
-	var out []ValidationError
+	// Initialize as empty slice, not nil, so json.Marshal emits `[]` and
+	// the frontend can iterate it without a null check.
+	out := []ValidationError{}
 	for i, raw := range rows {
 		_, errs := imp.ValidateRow(raw, mapping, i+1, ctx)
 		out = append(out, errs...)

@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"io/fs"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/asgardehs/odin/internal/audit"
 	"github.com/asgardehs/odin/internal/auth"
 	"github.com/asgardehs/odin/internal/database"
 	"github.com/asgardehs/odin/internal/importer"
+	"github.com/asgardehs/odin/internal/ratatoskr"
 	"github.com/asgardehs/odin/internal/repository"
 	"github.com/asgardehs/odin/internal/schemabuilder"
 )
@@ -31,6 +33,13 @@ type Server struct {
 	recovery        *auth.RecoveryStore
 	limiter         *RateLimiter
 	stopLimiter     context.CancelFunc
+
+	// Lazily-initialized XLSX parser. First /api/import/xlsx hit pays
+	// the embedded-Python extract + openpyxl install cost; both are then
+	// cached for the life of the process.
+	xlsxOnce sync.Once
+	xlsx     *ratatoskr.XLSX
+	xlsxErr  error
 }
 
 // New creates a server that serves the embedded frontend and API routes.
