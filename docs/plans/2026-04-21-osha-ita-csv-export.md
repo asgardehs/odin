@@ -90,74 +90,18 @@ Locked 2026-04-21 unless noted.
 
 ## Phase 4a.1 — Ontology v3.3 (source of truth)
 
-The ontology is vendored into odin as a submodule at
-`third_party/ehs-ontology/` (pinned to `main` on
-`github.com/asgardehs/ehs-ontology`). All TTL edits happen in the
-ontology repo on a feature branch, merge to `main` there, then odin
-bumps the submodule pointer in a separate commit. Don't edit files
-inside `vendor/` directly from odin's working tree.
+**Plan lives in the ontology repo**, not here. See
+`third_party/ehs-ontology/docs/plans/2026-04-21-ontology-v3.3.md`
+(Phase 1) for the full class / property / SKOS-mapping spec, HermiT
+and scenario-test requirements, and deliverables.
 
-Extend `third_party/ehs-ontology/ehs-ontology-v3.2.ttl` → `ehs-ontology-v3.3.ttl`.
+Odin-side work for this sub-phase is limited to:
 
-### New classes
-
-- `ehs:EmployerIdentificationNumber` — literal data property on `ehs:Establishment`.
-- `ehs:EstablishmentSize` — SKOS concept scheme with three concepts:
-  - `ehs:EstablishmentSize_Small` (≤ 19 employees)
-  - `ehs:EstablishmentSize_Medium` (20–249)
-  - `ehs:EstablishmentSize_Large` (≥ 250)
-  Thresholds from OSHA 29 CFR 1904.41.
-- `ehs:EstablishmentType` — SKOS concept scheme with three concepts:
-  - `ehs:EstablishmentType_PrivateIndustry`
-  - `ehs:EstablishmentType_StateGovernment`
-  - `ehs:EstablishmentType_LocalGovernment`
-- `ehs:TreatmentFacilityType` — SKOS concept scheme (Hospital ER /
-  Hospital outpatient clinic / Physician's office / Urgent care /
-  Occupational health clinic / Other / Unknown).
-- `ehs:ITAIncidentOutcome` — SKOS concept scheme (Death / Days Away /
-  Job Transfer or Restriction / Other Recordable).
-- `ehs:ITAIncidentType` — SKOS concept scheme (Injury / Skin Disorder /
-  Respiratory Condition / Poisoning / Hearing Loss / Other Illness).
-
-### New object and data properties
-
-- `ehs:hasEIN rdfs:range xsd:string`
-- `ehs:hasEstablishmentSize rdfs:range ehs:EstablishmentSize`
-- `ehs:hasEstablishmentType rdfs:range ehs:EstablishmentType`
-- `ehs:hasCompanyName rdfs:range xsd:string`
-- `ehs:hasDaysAwayFromWork rdfs:range xsd:integer`
-- `ehs:hasDaysRestrictedOrTransferred rdfs:range xsd:integer`
-- `ehs:hasDateOfDeath rdfs:range xsd:date`
-- `ehs:hasTreatmentFacilityType rdfs:range ehs:TreatmentFacilityType`
-- `ehs:hasTimeUnknown rdfs:range xsd:boolean`
-- `ehs:hasInjuryIllnessDescription rdfs:range xsd:string`
-- `ehs:hasITAOutcome rdfs:range ehs:ITAIncidentOutcome`
-- `ehs:hasITAType rdfs:range ehs:ITAIncidentType`
-
-### SKOS mappings (translation from Odin taxonomy → ITA)
-
-- Every existing `ehs:SeverityLevel_*` individual gets either
-  `skos:exactMatch` or `skos:broadMatch` to one `ehs:ITAIncidentOutcome_*`.
-- Every existing `ehs:CaseClassification_*` gets
-  `skos:exactMatch ehs:ITAIncidentType_*`.
-
-### Deliverable
-
-In the ontology repo (`asgardehs/ehs-ontology`):
-
-- `ehs-ontology-v3.3.ttl` (v3.2 copy + additions)
-- `CHANGELOG.md` entry for v3.3
-- `README.md` pointer updated
-- `tests/run.sh ehs-ontology-v3.3.ttl` passes — all 8 existing scenario
-  ASK queries plus one new `scenario-9-ita-export.rq` for the ITA
-  routing added in v3.3
-- HermiT validation clean (0 unsat classes, 0 warnings beyond the
-  pre-existing `xsd:duration` note)
-
-In odin (separate commit after ontology merge):
-
-- Submodule pointer at `third_party/ehs-ontology/` bumped to the v3.3
-  merge commit on `main`.
+- After v3.3 merges to `main` in `asgardehs/ehs-ontology`, bump the
+  submodule pointer at `third_party/ehs-ontology/` in a separate
+  odin commit.
+- Don't edit files inside `third_party/ehs-ontology/` directly from
+  odin's working tree — all TTL edits happen in the ontology repo.
 
 ---
 
@@ -325,6 +269,20 @@ without re-typing.
 
 Deferred if Phase 4a/b/c runs long. Small enough to pick up in a
 follow-up session.
+
+---
+
+## Phase 4e (optional) — Mimir TURTLE graph viewer
+
+**Plan lives in the ontology repo**, not here. See
+`third_party/ehs-ontology/docs/plans/2026-04-21-ontology-v3.3.md`
+(Phase 2) for the full Mimir spec: stack (Python + rdflib + FastAPI
++ Cytoscape.js), repo layout (sibling repo `asgardehs/mimir`
+submoduled into `ehs-ontology` at `tools/mimir/`), MVP features,
+and sequencing.
+
+No odin-side work — Mimir lives entirely outside this repo.
+Optional, doesn't block any other Phase 4 sub-phase.
 
 ---
 
