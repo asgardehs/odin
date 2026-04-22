@@ -10,10 +10,21 @@ interface ImportUploaderProps {
   onUploaded: (preview: ImportPreview) => void;
 }
 
+// endpointFor routes the upload to the CSV or XLSX parser based on file
+// extension. Both endpoints return the same ImportPreview shape; the
+// mapping / commit phases are shared under /api/import/csv/{token}/...
+function endpointFor(moduleSlug: string, file: File): string {
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+    return `/api/import/xlsx/${moduleSlug}`;
+  }
+  return `/api/import/csv/${moduleSlug}`;
+}
+
 /**
  * Step 1 of the import flow: pick a module, pick a target facility,
- * drop a CSV. On success the parent transitions to the mapping step
- * with the returned preview.
+ * drop a CSV or XLSX. On success the parent transitions to the mapping
+ * step with the returned preview.
  */
 export default function ImportUploader({ modules, onUploaded }: ImportUploaderProps) {
   const [moduleSlug, setModuleSlug] = useState('');
@@ -44,7 +55,7 @@ export default function ImportUploader({ modules, onUploaded }: ImportUploaderPr
       return;
     }
     if (!file) {
-      setError('Pick a CSV file to upload.');
+      setError('Pick a CSV or XLSX file to upload.');
       return;
     }
 
@@ -56,7 +67,7 @@ export default function ImportUploader({ modules, onUploaded }: ImportUploaderPr
 
     setUploading(true);
     try {
-      const res = await apiFetch(`/api/import/csv/${moduleSlug}`, {
+      const res = await apiFetch(endpointFor(moduleSlug, file), {
         method: 'POST',
         body: form,
       });
@@ -118,7 +129,10 @@ export default function ImportUploader({ modules, onUploaded }: ImportUploaderPr
         )}
       </SectionCard>
 
-      <SectionCard title="CSV file" description="UTF-8, comma-delimited, one header row.">
+      <SectionCard
+        title="Data file"
+        description="CSV (UTF-8, comma-delimited) or Excel .xlsx / .xls. One header row, first sheet only for Excel."
+      >
         <label
           onDragOver={(e) => {
             e.preventDefault();
@@ -135,7 +149,7 @@ export default function ImportUploader({ modules, onUploaded }: ImportUploaderPr
           <input
             ref={fileInput}
             type="file"
-            accept=".csv,text/csv"
+            accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
             className="hidden"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
@@ -149,7 +163,7 @@ export default function ImportUploader({ modules, onUploaded }: ImportUploaderPr
             </>
           ) : (
             <>
-              <span className="text-[var(--color-fg)]">Drop a CSV here or click to pick</span>
+              <span className="text-[var(--color-fg)]">Drop a CSV or Excel file here or click to pick</span>
               <span className="text-xs text-[var(--color-comment)]">10 MB maximum</span>
             </>
           )}
