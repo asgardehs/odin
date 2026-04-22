@@ -1,0 +1,4 @@
+[submodule "third_party/ehs-ontology"]
+	path = third_party/ehs-ontology
+	url = https://github.com/asgardehs/ehs-ontology.git
+	branch = main

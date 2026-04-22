@@ -1199,7 +1199,7 @@ END;
 /*
 MODULE D — CLEAN WATER ACT DISCHARGE & MONITORING
 
-Derived from docs/ontology/ehs-ontology-v3.2.ttl. Consolidates CWA-distinctive
+Derived from third_party/ehs-ontology/ehs-ontology-v3.2.ttl. Consolidates CWA-distinctive
 SQL under one file matching the ontology's Module D scope.
 
 ONTOLOGY-TO-SQL MAP:

@@ -81,14 +81,14 @@ Locked in 2026-04-20 unless noted.
 
 ## Phase 0 — Ontology v3.2: Clean Water Act domain
 
-Extend `docs/ontology/ehs-ontology-v3.1.ttl` → `ehs-ontology-v3.2.ttl`.
+Extend `third_party/ehs-ontology/ehs-ontology-v3.1.ttl` → `ehs-ontology-v3.2.ttl`.
 Pattern mirrors the existing CAA coverage (Module B's ontology depth).
 
 ### Progress (2026-04-20 — in-flight, local commits only)
 
 **Landed in local commit `b2819cd` (not yet pushed):**
 
-- Archived v3.1 → `docs/ontology/.archive/ehs-ontology-v3.1.ttl`; new file
+- Archived v3.1 → `third_party/ehs-ontology/.archive/ehs-ontology-v3.1.ttl`; new file
   `ehs-ontology-v3.2.ttl` is live.
 - Bumped `owl:versionInfo` to 3.2 in both header blocks; updated
   `dcterms:date`; appended a v3.2 additions list to the header rdfs:comment.
@@ -186,8 +186,8 @@ Pattern mirrors the existing CAA coverage (Module B's ontology depth).
 
 ### Deliverable
 
-Single PR: `docs/ontology/ehs-ontology-v3.2.ttl` + a short changelog in
-`docs/ontology/CHANGELOG.md` explaining what v3.2 adds.
+Single PR: `third_party/ehs-ontology/ehs-ontology-v3.2.ttl` + a short changelog in
+`third_party/ehs-ontology/CHANGELOG.md` explaining what v3.2 adds.
 
 ---
 

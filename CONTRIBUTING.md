@@ -27,10 +27,13 @@ on its quality; it means it doesn't belong in this particular application.
 
 Odin has three sources of truth, ordered by distance from the user:
 
-- **The ontology** (`docs/ontology/ehs-ontology-v3.1.ttl`) — a formal
-  OWL/Turtle model of the EHS domain, covering regulatory concepts like
-  EPCRA/TRI, Title V/CAA, OSHA 300, and Incident Management. This is the
-  core logic of the entire system. Everything else is derived from it.
+- **The ontology** (`third_party/ehs-ontology/ehs-ontology-v3.2.ttl`) — a
+  formal OWL/Turtle model of the EHS domain, covering regulatory
+  concepts like EPCRA/TRI, Title V/CAA, OSHA 300, Clean Water Act, and
+  Incident Management. Vendored as a git submodule from
+  `github.com/asgardehs/ehs-ontology` (pinned to `main`); edits happen
+  in that repo, not in odin's working tree. This is the core logic of
+  the entire system — everything else is derived from it.
 - **The EHS schema** (`docs/database-design/sql/`) — SQL translation of
   the ontology into SQLite tables, views, and triggers. Schema entries
   should be traceable back to ontology concepts.
@@ -140,7 +143,7 @@ opening an issue:
 For context on the ontology's architecture and the research methodology
 behind it, see the paper
 *The Compliance Routing Problem — A Practitioner-Built Ontology for
-Multi-Agency EHS Navigation* referenced in `docs/ontology/README.md`.
+Multi-Agency EHS Navigation* referenced in `third_party/ehs-ontology/README.md`.
 Proposals that align with the paper's three-axis routing model are
 easier to evaluate than proposals that work around it.
 
