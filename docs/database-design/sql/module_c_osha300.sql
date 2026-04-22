@@ -596,3 +596,327 @@ CREATE TABLE IF NOT EXISTS corrective_actions (
 CREATE INDEX idx_corrective_actions_investigation ON corrective_actions(investigation_id);
 CREATE INDEX idx_corrective_actions_status ON corrective_actions(status);
 CREATE INDEX idx_corrective_actions_due_date ON corrective_actions(due_date);
+
+
+-- ============================================================================
+-- v3.3 ADDITIONS — OSHA ITA CSV EXPORT (Phase 4a.2)
+-- ============================================================================
+-- Derived from ehs-ontology-v3.3.ttl (ITA vocabulary: EstablishmentSize,
+-- EstablishmentType, TreatmentFacilityType, ITAIncidentOutcome,
+-- ITAIncidentType + SKOS exactMatch mappings).
+--
+-- Ontology-to-SQL translation rules applied here:
+--   - skos:notation on each concept becomes the SQL lookup table's `code`.
+--   - dcterms:source becomes the cfr_reference column.
+--   - rdfs:label becomes `name`.
+--   - skos:definition becomes `description`.
+--   - skos:exactMatch triples seed the mapping tables.
+--
+-- Deferred to the migration-runner ticket:
+--   - Adding 4 new columns to `establishments` (ein, company_name,
+--     size_code, establishment_type_code).
+--   - Adding 6 new columns to `incidents` (days_away_from_work,
+--     days_restricted_or_transferred, date_of_death,
+--     treatment_facility_type_code, time_unknown,
+--     injury_illness_description).
+-- Both are stubbed below as comments. Fresh installs will pick them up
+-- once the migration runner handles ALTER TABLE idempotency properly.
+
+
+-- ============================================================================
+-- REFERENCE: ITA ESTABLISHMENT SIZE CATEGORIES
+-- ============================================================================
+-- Three tiers per 29 CFR 1904.41 submission requirements. Sizing is by
+-- annual-average peak employment count at the establishment level, not the
+-- parent company.
+
+CREATE TABLE IF NOT EXISTS ita_establishment_sizes (
+    code TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    cfr_reference TEXT NOT NULL,
+    min_employees INTEGER,                      -- Inclusive lower bound (NULL = no lower)
+    max_employees INTEGER                       -- Inclusive upper bound (NULL = no upper)
+);
+
+INSERT OR IGNORE INTO ita_establishment_sizes (code, name, description, cfr_reference, min_employees, max_employees) VALUES
+    ('SMALL',  'Small (≤ 19 employees)',  'Partially exempt from 29 CFR 1904 recordkeeping unless in a non-partially-exempt industry. Not required to submit electronically via ITA.', '29 CFR 1904.1(a)(1); 29 CFR 1904.41', NULL, 19),
+    ('MEDIUM', 'Medium (20–249 employees)', 'Must submit 300A summary electronically via ITA if in a designated high-hazard industry (29 CFR 1904.41 Appendix A).', '29 CFR 1904.41(a)(2)', 20, 249),
+    ('LARGE',  'Large (≥ 250 employees)',  'Must submit full 300 Log, 300A summary, AND 301 Incident Reports electronically via ITA regardless of industry.', '29 CFR 1904.41(a)(1)', 250, NULL);
+
+
+-- ============================================================================
+-- REFERENCE: ITA ESTABLISHMENT TYPE CATEGORIES
+-- ============================================================================
+-- Drives submission routing between federal OSHA and State Plan authorities.
+
+CREATE TABLE IF NOT EXISTS ita_establishment_types (
+    code TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    cfr_reference TEXT NOT NULL
+);
+
+INSERT OR IGNORE INTO ita_establishment_types (code, name, description, cfr_reference) VALUES
+    ('PRIVATE',   'Private Industry', 'Non-governmental employer. Default federal OSHA jurisdiction unless superseded by an approved State Plan.',                                                              'OSH Act of 1970, Section 3(5); 29 CFR 1975'),
+    ('STATE_GOV', 'State Government', 'State-level government employer. Covered ONLY in states with OSHA-approved State Plans — federal OSHA has no jurisdiction over state government employees.',           'OSH Act Section 3(5); 29 CFR 1956'),
+    ('LOCAL_GOV', 'Local Government', 'County, city, or other political-subdivision government employer. Same State Plan coverage logic as state government — federal OSHA has no jurisdiction.',            'OSH Act Section 3(5); 29 CFR 1956');
+
+
+-- ============================================================================
+-- REFERENCE: ITA TREATMENT FACILITY TYPES
+-- ============================================================================
+-- Per OSHA Form 301 Item 15 and ITA detail CSV treatment_facility_type column.
+
+CREATE TABLE IF NOT EXISTS ita_treatment_facility_types (
+    code TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL
+);
+
+INSERT OR IGNORE INTO ita_treatment_facility_types (code, name, description) VALUES
+    ('HOSPITAL_ER',  'Hospital Emergency Room',       'Emergency department of a hospital; acute unscheduled care.'),
+    ('HOSPITAL_OP',  'Hospital Outpatient Clinic',    'Scheduled non-emergency care at a hospital-affiliated outpatient clinic.'),
+    ('PHYSICIAN',    'Physician''s Office',           'Private physician''s office, non-hospital-affiliated, not specialized for occupational medicine.'),
+    ('URGENT_CARE',  'Urgent Care Center',            'Walk-in urgent-care facility providing non-emergency acute care without appointment.'),
+    ('OCC_HEALTH',   'Occupational Health Clinic',    'Clinic specializing in work-related injury and illness, typically under employer contract.'),
+    ('OTHER',        'Other Facility',                'A medical facility not matching any other category (e.g. on-site first-aid room with a nurse, ambulance-only treatment).'),
+    ('UNKNOWN',      'Unknown',                       'Treatment facility not known at time of 301 completion. Acceptable only for backfilled historical records.');
+
+
+-- ============================================================================
+-- REFERENCE: ITA INCIDENT OUTCOMES (29 CFR 1904.7(b)(2)-(5))
+-- ============================================================================
+-- Four recordable-case outcomes as emitted on the ITA detail CSV.
+-- Not in the original Phase 4a.2 plan as a lookup table, but added here to
+-- give ita_outcome_mapping a proper FK target rather than a bare TEXT column.
+
+CREATE TABLE IF NOT EXISTS ita_incident_outcomes (
+    code TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    cfr_reference TEXT NOT NULL,
+    ita_csv_column TEXT                         -- Which ITA detail CSV column (G/H/I/J)
+);
+
+INSERT OR IGNORE INTO ita_incident_outcomes (code, name, description, cfr_reference, ita_csv_column) VALUES
+    ('DEATH',                    'Death',                        'Work-related fatality. Also triggers 8-hour notification under 29 CFR 1904.39.',                                                                    '29 CFR 1904.7(b)(2)',                  'G'),
+    ('DAYS_AWAY',                'Days Away From Work',          'Case involves one or more calendar days away from work beyond the day of the event. 180-day cap per 1904.7(b)(3)(v).',                            '29 CFR 1904.7(b)(3)',                  'H'),
+    ('JOB_TRANSFER_RESTRICTION', 'Job Transfer or Restriction',  'Restricted work or transfer to another job, no days away beyond event day. 180-day cap per 1904.7(b)(4)(iii).',                                 '29 CFR 1904.7(b)(4)',                  'I'),
+    ('OTHER_RECORDABLE',         'Other Recordable',             'Recordable case not meeting death, days-away, or restriction thresholds — typically medical treatment beyond first aid only.',                   '29 CFR 1904.7(b)(5); 1904.7(b)(6)-(10)', 'J');
+
+
+-- ============================================================================
+-- REFERENCE: ITA INCIDENT TYPES
+-- ============================================================================
+-- Injury-or-illness classification for the ITA CSV incident_type column.
+-- 1:1 with the existing case_classifications table via ita_case_type_mapping.
+-- Like ita_incident_outcomes above, not in the original plan but added here
+-- for FK integrity.
+
+CREATE TABLE IF NOT EXISTS ita_incident_types (
+    code TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    osha_300_column TEXT NOT NULL               -- Which 300 Log column (F, M1-M5)
+);
+
+INSERT OR IGNORE INTO ita_incident_types (code, name, description, osha_300_column) VALUES
+    ('INJURY',                 'Injury',                  'Physical wound or damage to the body from a workplace event.',                                   'F'),
+    ('SKIN_DISORDER',          'Skin Disorder',           'Occupational skin illness.',                                                                     'M1'),
+    ('RESPIRATORY_CONDITION',  'Respiratory Condition',   'Occupational respiratory illness.',                                                              'M2'),
+    ('POISONING',              'Poisoning',               'Systemic illness from absorbed toxic substances.',                                               'M3'),
+    ('HEARING_LOSS',           'Hearing Loss',            'Standard Threshold Shift per 29 CFR 1904.10.',                                                   'M4'),
+    ('OTHER_ILLNESS',          'All Other Illnesses',     'Occupational illness not matching skin, respiratory, poisoning, or hearing-loss categories.',   'M5');
+
+
+-- ============================================================================
+-- MAPPING: OSHA SEVERITY → ITA INCIDENT OUTCOME
+-- ============================================================================
+-- Declarative translation from Odin's internal severity taxonomy to the ITA
+-- outcome vocabulary. Seeded from ehs-ontology-v3.3.ttl skos:exactMatch
+-- triples between ehs:IncidentSeverity subclasses and ehs:ITAIncidentOutcome
+-- subclasses.
+--
+-- Only the 4 OSHA-recordable severities have a mapping. The 4 non-recordable
+-- severities (FIRST_AID, NEAR_MISS, PROPERTY, ENVIRONMENTAL) deliberately
+-- have NO row here — their absence is the statement of the regulatory fact
+-- that these cases do not flow to ITA export. Exporter must left-join to
+-- filter out unmapped incidents.
+
+CREATE TABLE IF NOT EXISTS ita_outcome_mapping (
+    severity_code TEXT PRIMARY KEY,
+    ita_outcome_code TEXT NOT NULL,
+    cfr_reference TEXT NOT NULL,
+    notes TEXT,
+    FOREIGN KEY (severity_code) REFERENCES incident_severity_levels(code),
+    FOREIGN KEY (ita_outcome_code) REFERENCES ita_incident_outcomes(code)
+);
+
+INSERT OR IGNORE INTO ita_outcome_mapping (severity_code, ita_outcome_code, cfr_reference, notes) VALUES
+    ('FATALITY',   'DEATH',                    '29 CFR 1904.7(b)(2)', 'Also triggers 8-hour OSHA notification per 1904.39 — independent of ITA cycle.'),
+    ('LOST_TIME',  'DAYS_AWAY',                '29 CFR 1904.7(b)(3)', 'Day-count cap of 180 days applies.'),
+    ('RESTRICTED', 'JOB_TRANSFER_RESTRICTION', '29 CFR 1904.7(b)(4)', 'Day-count cap of 180 days shared with LOST_TIME across the life of one case.'),
+    ('MEDICAL_TX', 'OTHER_RECORDABLE',         '29 CFR 1904.7(b)(5)', 'Medical treatment beyond first aid is the most common occupant of the OTHER_RECORDABLE bucket.');
+
+
+-- ============================================================================
+-- MAPPING: CASE CLASSIFICATION → ITA INCIDENT TYPE
+-- ============================================================================
+-- Clean 1:1 translation. Seeded from ehs-ontology-v3.3.ttl skos:exactMatch
+-- triples between ehs:CaseClassification subclasses and ehs:ITAIncidentType
+-- subclasses.
+
+CREATE TABLE IF NOT EXISTS ita_case_type_mapping (
+    case_classification_code TEXT PRIMARY KEY,
+    ita_case_type_code TEXT NOT NULL,
+    FOREIGN KEY (case_classification_code) REFERENCES case_classifications(code),
+    FOREIGN KEY (ita_case_type_code) REFERENCES ita_incident_types(code)
+);
+
+INSERT OR IGNORE INTO ita_case_type_mapping (case_classification_code, ita_case_type_code) VALUES
+    ('INJURY',     'INJURY'),
+    ('SKIN',       'SKIN_DISORDER'),
+    ('RESP',       'RESPIRATORY_CONDITION'),
+    ('POISON',     'POISONING'),
+    ('HEARING',    'HEARING_LOSS'),
+    ('OTHER_ILL',  'OTHER_ILLNESS');
+
+
+-- ============================================================================
+-- DEFERRED: Column additions on establishments and incidents
+-- ============================================================================
+-- The following ALTER TABLE statements are deferred to the migration-runner
+-- ticket. They are stubbed as SQL comments so fresh-install review captures
+-- the intended shape without executing ALTERs that would fail idempotency on
+-- existing databases.
+--
+-- On establishments (4 new columns):
+--   -- ALTER TABLE establishments ADD COLUMN ein TEXT;
+--   -- ALTER TABLE establishments ADD COLUMN company_name TEXT;
+--   -- ALTER TABLE establishments ADD COLUMN size_code TEXT
+--       REFERENCES ita_establishment_sizes(code);
+--   -- ALTER TABLE establishments ADD COLUMN establishment_type_code TEXT
+--       REFERENCES ita_establishment_types(code);
+--
+-- On incidents (6 new columns):
+--   -- ALTER TABLE incidents ADD COLUMN days_away_from_work INTEGER;
+--   -- ALTER TABLE incidents ADD COLUMN days_restricted_or_transferred INTEGER;
+--   -- ALTER TABLE incidents ADD COLUMN date_of_death TEXT;  -- YYYY-MM-DD
+--   -- ALTER TABLE incidents ADD COLUMN treatment_facility_type_code TEXT
+--       REFERENCES ita_treatment_facility_types(code);
+--   -- ALTER TABLE incidents ADD COLUMN time_unknown INTEGER DEFAULT 0;
+--   -- ALTER TABLE incidents ADD COLUMN injury_illness_description TEXT;
+--
+-- Until the migration runner handles these, the views below reference only
+-- columns that already exist. A future patch will widen the views once the
+-- new columns land.
+
+
+-- ============================================================================
+-- VIEW: v_osha_ita_detail
+-- ============================================================================
+-- Source for the ITA detail CSV export (one row per recordable incident,
+-- combining old 300 Log and 301 Incident Report fields).
+--
+-- Exporter reads this view directly; business logic (severity → ITA outcome,
+-- case classification → ITA type) is resolved here via the mapping tables,
+-- not in Go. If OSHA reclassifies an ITA code, update the mapping table and
+-- every downstream consumer picks up the change without a rebuild.
+--
+-- Filters to OSHA-recordable incidents only (inner-joined to
+-- ita_outcome_mapping). Non-recordable severities are excluded by design —
+-- their absence from the mapping table is the normative statement.
+--
+-- Note: this view references existing-column shape only. The 10 new columns
+-- on establishments + incidents (deferred above) will be added in a follow-up
+-- commit once the migration runner lands; the view body will be extended at
+-- that point to emit the full 24-column ITA detail shape.
+
+DROP VIEW IF EXISTS v_osha_ita_detail;
+CREATE VIEW v_osha_ita_detail AS
+SELECT
+    i.id                                    AS incident_id,
+    i.case_number,
+    i.establishment_id,
+    est.name                                AS establishment_name,
+    est.street_address                      AS establishment_street,
+    est.city                                AS establishment_city,
+    est.state                                AS establishment_state,
+    est.zip                                  AS establishment_zip,
+    est.naics_code,
+    i.incident_date,
+    i.incident_time,
+    i.time_employee_began_work,
+    i.activity_description                  AS nar_before_incident,
+    i.incident_description                  AS nar_what_happened,
+    i.object_or_substance                   AS nar_object_substance,
+    emp.first_name                          AS employee_first_name,
+    emp.last_name                           AS employee_last_name,
+    emp.date_of_birth                       AS employee_dob,
+    emp.date_hired                          AS employee_date_hired,
+    emp.gender                              AS employee_gender,
+    emp.job_title                           AS employee_job_title,
+    i.case_classification_code,
+    itm.ita_case_type_code                  AS ita_incident_type,
+    i.severity_code,
+    iom.ita_outcome_code                    AS ita_incident_outcome,
+    i.was_hospitalized,
+    i.was_er_visit,
+    strftime('%Y', i.incident_date)         AS reporting_year
+FROM incidents i
+INNER JOIN ita_outcome_mapping iom
+    ON iom.severity_code = i.severity_code
+LEFT JOIN ita_case_type_mapping itm
+    ON itm.case_classification_code = i.case_classification_code
+INNER JOIN establishments est
+    ON est.id = i.establishment_id
+LEFT JOIN employees emp
+    ON emp.id = i.employee_id;
+
+
+-- ============================================================================
+-- VIEW: v_osha_ita_summary
+-- ============================================================================
+-- Source for the ITA summary CSV export (one row per establishment + year,
+-- equivalent to the OSHA 300A annual summary).
+--
+-- Aggregates recordable incidents by outcome. no_injuries_illnesses fires
+-- when the establishment had zero recordables in the reporting year — still
+-- required to submit under 29 CFR 1904.41 if size/industry triggers apply.
+--
+-- As with v_osha_ita_detail, this view emits only columns that already exist
+-- on the current schema. The 28-column ITA summary shape will be reached in
+-- a follow-up patch once the establishment-level new columns (EIN, company
+-- name, size_code, type_code) are alterable.
+
+DROP VIEW IF EXISTS v_osha_ita_summary;
+CREATE VIEW v_osha_ita_summary AS
+SELECT
+    est.id                                                                      AS establishment_id,
+    est.name                                                                    AS establishment_name,
+    est.street_address                                                          AS establishment_street,
+    est.city                                                                    AS establishment_city,
+    est.state                                                                    AS establishment_state,
+    est.zip                                                                      AS establishment_zip,
+    est.naics_code,
+    est.annual_avg_employees,
+    est.total_hours_worked,
+    strftime('%Y', i.incident_date)                                             AS reporting_year,
+    SUM(CASE WHEN iom.ita_outcome_code = 'DEATH'                    THEN 1 ELSE 0 END) AS total_deaths,
+    SUM(CASE WHEN iom.ita_outcome_code = 'DAYS_AWAY'                THEN 1 ELSE 0 END) AS total_days_away_cases,
+    SUM(CASE WHEN iom.ita_outcome_code = 'JOB_TRANSFER_RESTRICTION' THEN 1 ELSE 0 END) AS total_job_transfer_restriction_cases,
+    SUM(CASE WHEN iom.ita_outcome_code = 'OTHER_RECORDABLE'         THEN 1 ELSE 0 END) AS total_other_recordable_cases,
+    COUNT(*)                                                                    AS total_recordable_cases,
+    CASE WHEN COUNT(*) = 0 THEN 'Y' ELSE 'N' END                                AS no_injuries_illnesses
+FROM establishments est
+LEFT JOIN incidents i
+    ON i.establishment_id = est.id
+LEFT JOIN ita_outcome_mapping iom
+    ON iom.severity_code = i.severity_code
+GROUP BY est.id, strftime('%Y', i.incident_date);
+
+
+-- ============================================================================
+-- END OF v3.3 ADDITIONS (Phase 4a.2)
+-- ============================================================================
