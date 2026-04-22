@@ -349,29 +349,35 @@ follow-up session.
 
 ---
 
-## Open decisions to tighten before we start
+## Open decisions (resolved 2026-04-21)
 
-- [ ] **Sidebar placement.** Is OSHA ITA a top-level sidebar entry, a
-  sub-item under Incidents, or admin-only? Current lean: admin-only
-  entry so only compliance folks see it.
-- [ ] **Golden-file maintenance.** Phase 4c browser smoke uses a
-  committed CSV golden. If ITA's template changes in future versions,
-  the golden has to move with it. OK to accept this tax, or prefer a
-  structural assert (headers + row shape) instead of exact-bytes?
-- [ ] **`size` derivation vs explicit.** ITA enums 20–249 / ≥250 can be
-  derived from `peak_employees`. Do we store `size_code` explicitly
-  (allows override per reporting year) or compute it on export? Current
-  lean: store it, because OSHA tier thresholds have changed historically
-  and a stored value is auditable.
-- [ ] **`year_filing_for` on summary.** Do we require the user to pick
-  the year every export, or infer from current system time minus
-  reporting lag (ITA deadline is March 2 of the following year)? Lean:
-  require user pick. No magic.
-- [ ] **Empty-year behavior.** An establishment with zero incidents for
-  the selected year: do we still let the user export a summary row
-  (required by OSHA for all establishments ≥ 20 employees in covered
-  industries), or block with a warning? Current lean: let it export
-  with `no_injuries_illnesses=Y` set to "Y" — required by ITA spec.
+- [x] **Sidebar placement.** Admin-only entry — compliance folks only.
+  The sidebar is already crowded, so broader sidebar-refactor work is
+  tracked separately in `TODO.md`; don't let ITA placement drive that
+  refactor. If the Admin section gets a sub-grouping in the refactor,
+  ITA lives there.
+- [x] **Golden-file maintenance.** Exact-bytes golden. Accept the tax
+  that ITA template changes trigger a golden refresh — ITA publishes
+  column order and doesn't reorder mid-year, and exact-bytes catches
+  regressions a structural assert would silently miss. If OSHA ever
+  starts reordering, swap to a semantic-diff helper (parse both CSVs
+  as record sets, compare as ordered maps) — ~50 LOC, tracked as a
+  future enhancement, not needed for MVP.
+- [x] **`size_code` — store explicitly.** OSHA has bumped the ITA
+  thresholds historically; a stored value is auditable and survives
+  threshold changes in the ontology. Keeps the reporting-year value
+  frozen at the time the user ran the export.
+- [x] **`year_filing_for` — user picks every time.** No inference, no
+  defaults. Transfers filing-period liability to the user, which is
+  where it belongs. The field is mandatory on the export page; the
+  establishment picker doesn't reveal the download buttons until a
+  year is selected.
+- [x] **Empty-year behavior — let it export.** An establishment with
+  zero incidents for the selected year still has to file the summary
+  (OSHA 1904.41 covers establishments ≥ 20 employees regardless of
+  incident count). `no_injuries_illnesses="Y"` on the summary row;
+  totals all zero; `change_reason` blank. Detail CSV for an empty year
+  contains only the header row.
 
 ---
 

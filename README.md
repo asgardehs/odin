@@ -78,11 +78,15 @@ combined with application-level user accounts managed by Odin itself.
 ## Building and Running
 
 ```bash
-git clone https://github.com/asgardehs/odin.git
+git clone --recursive https://github.com/asgardehs/odin.git
 cd odin
 make build
 ./odin
 ```
+
+`--recursive` fetches the vendored EHS Ontology submodule at
+`third_party/ehs-ontology/`. If you already cloned without `--recursive`,
+run `git submodule update --init` from inside the repo to pick it up.
 
 The `make build` target compiles the frontend with Bun, embeds the output
 into the Go binary, and produces a single `odin` executable. Running it
@@ -146,6 +150,13 @@ belong to Odin the application; EHS-schema migrations
 (`docs/database-design/sql/`) manage the compliance domain tables that
 belong to Odin the EHS tool. Keeping the two separate lets the application
 scaffolding evolve without perturbing the regulatory schema.
+
+The EHS-schema tables are derived from a formal OWL/Turtle ontology
+vendored as a submodule at `third_party/ehs-ontology/` (its own repo at
+[asgardehs/ehs-ontology](https://github.com/asgardehs/ehs-ontology)).
+The ontology is the source of truth; SQL entries trace back to ontology
+concepts. See [CONTRIBUTING.md](CONTRIBUTING.md) for the contract
+between the ontology, the schema, and the application.
 
 For the broader architectural direction — module design, reporting
 pipeline, schema builder design, and ecosystem integration plans — see the

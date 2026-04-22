@@ -86,3 +86,24 @@ Ideas we want to preserve but are explicitly not in scope for this plan.
   effort: reuse `Modal` + `Field`/`Section`, open on row click, close on
   escape/backdrop. Close button already-open close-finding flow stays on
   its own "Close" button to keep destructive/state-changing actions explicit.
+
+- **New Incidents** under *Classification & Severity* Case Classification Code and Body Part Code change to drop down selection menu.
+
+_ **Inspections** Create a tool similar to Schema Builder, to allow for users to create custom Inspections beyond what we supplied. House access to the module on the Inspections screen.
+
+- **New Audits** We supply a Integrated audit check box, but not a way for the user to select what ISO Frameworks are Integrated. 
+
+_**Export** Design Export Function for Admins to be able to Export records to xlsx, json, or csv.
+
+- **Sidebar refactor.** The left-nav list has grown past a comfortable read
+  as modules have landed — 13 main entries + 4 Clean Water entries + 3
+  Admin entries today, and Phase 4 (OSHA ITA) + the reporting pipeline will
+  add more. Options to explore:
+  - Promote functional groupings (Compliance / Operations / Admin) with
+    collapsible sections — matches the Clean Water group pattern.
+  - Keep the common modules flat and move lower-traffic items (Admin,
+    specialty reports like OSHA ITA) into a secondary nav / overflow menu.
+  - Command palette (⌘K) for power users, so sidebar only carries
+    frequently-clicked entries.
+  Revisit before the initial release; not urgent while module count is
+  growing fast. Flagged during Phase 4 planning (2026-04-21).
