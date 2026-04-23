@@ -26,6 +26,14 @@ interface TextFieldProps extends BaseProps {
   onChange: (value: string) => void;
   placeholder?: string;
   autoFocus?: boolean;
+  /**
+   * HTML autocomplete attribute. Defaults to "off" because almost all
+   * fields in this app are domain-specific (NAICS codes, OSHA severity
+   * levels, etc.) where browser autofill interferes more than it helps.
+   * Explicit override (e.g. "email", "street-address") when a field
+   * maps to a known autofill type.
+   */
+  autoComplete?: string;
 }
 
 interface TextareaFieldProps extends BaseProps {
@@ -132,6 +140,7 @@ export function FormField(props: FormFieldProps) {
           required={required}
           disabled={disabled}
           autoFocus={props.autoFocus}
+          autoComplete={props.autoComplete ?? 'off'}
           className={inputClass}
         />
       )}
