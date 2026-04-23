@@ -451,6 +451,9 @@ func (s *Server) apiRoutes() {
 		}
 		writeJSON(w, map[string]any{"items": rows, "total": int64(len(rows))})
 	})
+
+	// -- OSHA ITA CSV export (admin-only, audit-logged) --
+	s.registerOSHAITARoutes()
 }
 
 func (s *Server) handleDashboardCounts(w http.ResponseWriter, r *http.Request) {

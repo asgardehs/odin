@@ -29,6 +29,7 @@ const (
 	ActionCreate Action = "create"
 	ActionUpdate Action = "update"
 	ActionDelete Action = "delete"
+	ActionExport Action = "export"
 )
 
 // Entry is a single audit record written as JSON and committed to Git.
