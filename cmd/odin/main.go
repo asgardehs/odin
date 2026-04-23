@@ -70,6 +70,17 @@ func main() {
 		log.Fatalf("app migrate: %v", err)
 	}
 
+	// Apply forward-only schema deltas (one-shot, tracked in _migrations).
+	// Catches existing DBs up to the current schema when module files
+	// change after initial apply.
+	deltaFS, err := fs.Sub(odin.SchemaDeltas, "docs/database-design/sql/deltas")
+	if err != nil {
+		log.Fatalf("embedded deltas not found: %v", err)
+	}
+	if err := database.ApplyDeltas(db, deltaFS); err != nil {
+		log.Fatalf("apply deltas: %v", err)
+	}
+
 	// Load (re-create) all views. Runs on every startup so pulled
 	// changes to view bodies take effect without a DB reset.
 	viewsFS, err := fs.Sub(odin.SchemaViews, "docs/database-design/sql/views")

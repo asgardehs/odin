@@ -15,6 +15,17 @@ var SchemaSQL embed.FS
 //go:embed docs/database-design/sql/views/*.sql
 var SchemaViews embed.FS
 
+// SchemaDeltas contains forward-only schema deltas applied by
+// database.ApplyDeltas. Each delta runs exactly once (tracked in
+// _migrations by filename). Deltas handle cases where a module
+// migration has already been applied on an existing DB but the
+// current schema shape requires additions (new columns, new tables,
+// new seed rows). Named "YYYY-MM-DD-description.sql" for
+// chronological ordering.
+//
+//go:embed docs/database-design/sql/deltas/*.sql
+var SchemaDeltas embed.FS
+
 // AppMigrations contains application-level migrations (auth, config, etc.)
 // that are separate from the EHS domain schemas.
 //

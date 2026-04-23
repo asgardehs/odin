@@ -31,6 +31,10 @@ func seedExportTestDB(t *testing.T) (*database.DB, int64) {
 	if err := database.Migrate(db, migrations); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
+	deltaDir := os.DirFS("../../docs/database-design/sql/deltas")
+	if err := database.ApplyDeltas(db, deltaDir); err != nil {
+		t.Fatalf("apply deltas: %v", err)
+	}
 	// Views live in a sibling directory, re-executed every startup in prod.
 	viewsDir := os.DirFS("../../docs/database-design/sql/views")
 	if err := database.LoadViews(db, viewsDir); err != nil {

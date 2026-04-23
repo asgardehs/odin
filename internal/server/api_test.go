@@ -58,6 +58,11 @@ func newTestServerWithDB(t *testing.T) *testContext {
 	if err := database.Migrate(db, migrations); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
+	// Deltas run after modules in prod; mirror that order here.
+	deltaDir := os.DirFS("../../docs/database-design/sql/deltas")
+	if err := database.ApplyDeltas(db, deltaDir); err != nil {
+		t.Fatalf("apply deltas: %v", err)
+	}
 	// Views re-loaded on every startup in prod; mirror that here so
 	// exporter / lookup / route tests hit the widened shape.
 	viewsDir := os.DirFS("../../docs/database-design/sql/views")

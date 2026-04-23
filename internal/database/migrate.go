@@ -124,14 +124,7 @@ func Migrate(db *DB, migrations []Migration) error {
 			return fmt.Errorf("migrate: apply %s: %w", m.Name, err)
 		}
 
-		stmt, _, err := db.conn.Prepare(`INSERT INTO _migrations (name) VALUES (?)`)
-		if err != nil {
-			_ = db.Exec("ROLLBACK TO migration")
-			return fmt.Errorf("migrate: record %s: %w", m.Name, err)
-		}
-		stmt.BindText(1, m.Name)
-		stmt.Step()
-		if err := stmt.Close(); err != nil {
+		if err := recordMigration(db, m.Name); err != nil {
 			_ = db.Exec("ROLLBACK TO migration")
 			return fmt.Errorf("migrate: record %s: %w", m.Name, err)
 		}
@@ -142,6 +135,19 @@ func Migrate(db *DB, migrations []Migration) error {
 	}
 
 	return nil
+}
+
+// recordMigration stamps a migration as applied in _migrations.
+// Shared by Migrate and ApplyDeltas (deltas.go).
+func recordMigration(db *DB, name string) error {
+	stmt, _, err := db.conn.Prepare(`INSERT INTO _migrations (name) VALUES (?)`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	stmt.BindText(1, name)
+	stmt.Step()
+	return stmt.Err()
 }
 
 // migrationApplied checks if a migration has already been run.
