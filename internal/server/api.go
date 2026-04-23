@@ -438,6 +438,19 @@ func (s *Server) apiRoutes() {
 
 	// -- Dashboard summary --
 	s.mux.HandleFunc("GET /api/dashboard/counts", s.handleDashboardCounts)
+
+	// -- Lookups (dropdown reference data) --
+	// Server-side whitelist of allowed tables lives in
+	// internal/repository/lookup.go; unknown tables return 404.
+	s.mux.HandleFunc("GET /api/lookup/{table}", func(w http.ResponseWriter, r *http.Request) {
+		table := r.PathValue("table")
+		rows, err := s.repo.ListLookup(table)
+		if err != nil {
+			writeError(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		writeJSON(w, map[string]any{"items": rows, "total": int64(len(rows))})
+	})
 }
 
 func (s *Server) handleDashboardCounts(w http.ResponseWriter, r *http.Request) {

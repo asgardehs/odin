@@ -984,3 +984,64 @@ func TestCreateIncidentWithITAFields(t *testing.T) {
 		t.Errorf("date_of_death = %v, want nil", row["date_of_death"])
 	}
 }
+
+// TestLookupRoute — Phase 4a.3.3 smoke test for GET /api/lookup/{table}.
+// Verifies whitelist behavior (known = OK, unknown = 404) and the
+// normalized (code, name, description) row shape.
+func TestLookupRoute(t *testing.T) {
+	tc := newTestServerWithDB(t)
+
+	tests := []struct {
+		table    string
+		wantRows int
+	}{
+		{"ita_establishment_sizes", 3},
+		{"ita_establishment_types", 3},
+		{"ita_treatment_facility_types", 7},
+		{"case_classifications", 6},
+		{"incident_severity_levels", 8},
+	}
+
+	for _, tt := range tests {
+		req := httptest.NewRequest("GET", "/api/lookup/"+tt.table, nil)
+		w := httptest.NewRecorder()
+		tc.srv.mux.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Errorf("GET /api/lookup/%s = %d; body: %s", tt.table, w.Code, w.Body.String())
+			continue
+		}
+
+		var resp struct {
+			Total int64 `json:"total"`
+			Items []map[string]any `json:"items"`
+		}
+		json.NewDecoder(w.Body).Decode(&resp)
+
+		if int(resp.Total) != tt.wantRows {
+			t.Errorf("%s: total = %d, want %d", tt.table, resp.Total, tt.wantRows)
+		}
+		if len(resp.Items) != tt.wantRows {
+			t.Errorf("%s: len(items) = %d, want %d", tt.table, len(resp.Items), tt.wantRows)
+		}
+		// Confirm each row has the normalized (code, name, description) shape.
+		for i, item := range resp.Items {
+			if _, ok := item["code"]; !ok {
+				t.Errorf("%s[%d]: missing 'code' field", tt.table, i)
+			}
+			if _, ok := item["name"]; !ok {
+				t.Errorf("%s[%d]: missing 'name' field", tt.table, i)
+			}
+			if _, ok := item["description"]; !ok {
+				t.Errorf("%s[%d]: missing 'description' field", tt.table, i)
+			}
+		}
+	}
+
+	// Unknown table → 404.
+	req := httptest.NewRequest("GET", "/api/lookup/no_such_table", nil)
+	w := httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("GET /api/lookup/no_such_table = %d, want 404", w.Code)
+	}
+}
