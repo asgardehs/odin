@@ -59,6 +59,7 @@ import SchemaList from './pages/admin/SchemaList';
 import SchemaNew from './pages/admin/SchemaNew';
 import SchemaDesigner from './pages/admin/SchemaDesigner';
 import ImportPage from './pages/admin/ImportPage';
+import ExportPage from './pages/osha-ita/ExportPage';
 import { AdminOnly } from './components/AdminOnly';
 
 
@@ -177,6 +178,8 @@ function AppRoutes() {
           <Route path="admin/schema/:id" element={<AdminOnly><SchemaDesigner /></AdminOnly>} />
 
           <Route path="admin/import" element={<AdminOnly><ImportPage /></AdminOnly>} />
+
+          <Route path="osha-ita" element={<AdminOnly><ExportPage /></AdminOnly>} />
         </Route>
       </Routes>
     </BrowserRouter>

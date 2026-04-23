@@ -30,9 +30,10 @@ const cleanWaterNavItems = [
 ];
 
 const adminNavItems = [
-  { to: '/admin/users',  label: 'Users',  icon: '🔐' },
-  { to: '/admin/schema', label: 'Schema', icon: '🧱' },
-  { to: '/admin/import', label: 'Import', icon: '📥' },
+  { to: '/admin/users',  label: 'Users',    icon: '🔐' },
+  { to: '/admin/schema', label: 'Schema',   icon: '🧱' },
+  { to: '/admin/import', label: 'Import',   icon: '📥' },
+  { to: '/osha-ita',     label: 'OSHA ITA', icon: '📤' },
 ];
 
 export default function Shell() {
