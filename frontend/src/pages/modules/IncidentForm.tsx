@@ -5,6 +5,7 @@ import { SectionCard } from '../../components/forms/SectionCard';
 import { FormField } from '../../components/forms/FormField';
 import { FormActions } from '../../components/forms/FormActions';
 import { EntitySelector } from '../../components/forms/EntitySelector';
+import { LookupDropdown } from '../../components/forms/LookupDropdown';
 import { useEntityMutation } from '../../hooks/useEntityMutation';
 import { useUnsavedGuard } from '../../hooks/useUnsavedGuard';
 
@@ -40,6 +41,13 @@ interface IncidentFormState {
   was_er_visit: boolean;
   reported_by: string;
   reported_date: string;
+  // OSHA ITA fields (v3.3)
+  treatment_facility_type_code: string;
+  days_away_from_work: number | null;
+  days_restricted_or_transferred: number | null;
+  date_of_death: string;
+  time_unknown: boolean;
+  injury_illness_description: string;
 }
 
 const empty: IncidentFormState = {
@@ -63,6 +71,12 @@ const empty: IncidentFormState = {
   was_er_visit: false,
   reported_by: '',
   reported_date: '',
+  treatment_facility_type_code: '',
+  days_away_from_work: null,
+  days_restricted_or_transferred: null,
+  date_of_death: '',
+  time_unknown: false,
+  injury_illness_description: '',
 };
 
 function nullIfBlank(s: string): string | null {
@@ -91,7 +105,19 @@ function toBody(f: IncidentFormState): Record<string, unknown> {
     was_er_visit: f.was_er_visit ? 1 : 0,
     reported_by: nullIfBlank(f.reported_by),
     reported_date: nullIfBlank(f.reported_date),
+    treatment_facility_type_code: nullIfBlank(f.treatment_facility_type_code),
+    days_away_from_work: f.days_away_from_work,
+    days_restricted_or_transferred: f.days_restricted_or_transferred,
+    date_of_death: nullIfBlank(f.date_of_death),
+    time_unknown: f.time_unknown ? 1 : 0,
+    injury_illness_description: nullIfBlank(f.injury_illness_description),
   };
+}
+
+function intField(raw: string): number | null {
+  if (raw.trim() === '') return null;
+  const n = parseInt(raw, 10);
+  return Number.isNaN(n) ? null : n;
 }
 
 export default function IncidentForm() {
@@ -133,6 +159,12 @@ export default function IncidentForm() {
           was_er_visit: Boolean(row.was_er_visit),
           reported_by: s('reported_by'),
           reported_date: s('reported_date'),
+          treatment_facility_type_code: s('treatment_facility_type_code'),
+          days_away_from_work: (row.days_away_from_work as number) ?? null,
+          days_restricted_or_transferred: (row.days_restricted_or_transferred as number) ?? null,
+          date_of_death: s('date_of_death'),
+          time_unknown: Boolean(row.time_unknown),
+          injury_illness_description: s('injury_illness_description'),
         });
       })
       .finally(() => setLoading(false));
@@ -388,7 +420,61 @@ export default function IncidentForm() {
                 label="Treatment Facility"
                 value={form.treatment_facility}
                 onChange={v => update('treatment_facility', v)}
-                hint="OSHA 301 item 7"
+                hint="OSHA 301 item 7 — facility name/address"
+              />
+              <LookupDropdown
+                table="ita_treatment_facility_types"
+                label="Treatment Facility Type"
+                value={form.treatment_facility_type_code}
+                onChange={v => update('treatment_facility_type_code', v)}
+                placeholder="Select facility type"
+              />
+            </div>
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          title="ITA Reporting"
+          description="Fields required for OSHA Injury Tracking Application (ITA) submission per 29 CFR 1904.41. Leave blank for non-recordable cases."
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              type="number"
+              label="Days Away From Work"
+              value={form.days_away_from_work?.toString() ?? ''}
+              onChange={v => update('days_away_from_work', intField(v))}
+              hint="29 CFR 1904.7(b)(3) — 180-day cap applies"
+            />
+            <FormField
+              type="number"
+              label="Days Restricted or Transferred"
+              value={form.days_restricted_or_transferred?.toString() ?? ''}
+              onChange={v => update('days_restricted_or_transferred', intField(v))}
+              hint="29 CFR 1904.7(b)(4) — 180-day cap shared with Days Away"
+            />
+            <FormField
+              type="date"
+              label="Date of Death"
+              value={form.date_of_death}
+              onChange={v => update('date_of_death', v)}
+              hint="Only when case transitions to fatality"
+            />
+            <FormField
+              type="checkbox"
+              label="Time of Incident Unknown"
+              value={form.time_unknown}
+              onChange={v => update('time_unknown', v)}
+              hint="Check if exact time cannot be determined (e.g. cumulative exposure, delayed reporting)"
+            />
+            <div className="md:col-span-2">
+              <FormField
+                type="textarea"
+                label="Injury / Illness Description"
+                value={form.injury_illness_description}
+                onChange={v => update('injury_illness_description', v)}
+                placeholder="Describe the injury or illness itself — body part, nature of harm."
+                hint="OSHA 301 item 16 — distinct from the incident description above"
+                rows={2}
               />
             </div>
           </div>
