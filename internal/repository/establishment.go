@@ -7,16 +7,21 @@ const establishmentTable = "establishments"
 
 // EstablishmentInput is the payload for creating or updating an establishment.
 type EstablishmentInput struct {
-	Name                string  `json:"name"`
-	StreetAddress       string  `json:"street_address"`
-	City                string  `json:"city"`
-	State               string  `json:"state"`
-	Zip                 string  `json:"zip"`
-	IndustryDescription *string `json:"industry_description,omitempty"`
-	NAICSCode           *string `json:"naics_code,omitempty"`
-	SICCode             *string `json:"sic_code,omitempty"`
-	PeakEmployees       *int    `json:"peak_employees,omitempty"`
-	AnnualAvgEmployees  *int    `json:"annual_avg_employees,omitempty"`
+	Name                  string  `json:"name"`
+	StreetAddress         string  `json:"street_address"`
+	City                  string  `json:"city"`
+	State                 string  `json:"state"`
+	Zip                   string  `json:"zip"`
+	IndustryDescription   *string `json:"industry_description,omitempty"`
+	NAICSCode             *string `json:"naics_code,omitempty"`
+	SICCode               *string `json:"sic_code,omitempty"`
+	PeakEmployees         *int    `json:"peak_employees,omitempty"`
+	AnnualAvgEmployees    *int    `json:"annual_avg_employees,omitempty"`
+	// OSHA ITA reporting fields (v3.3, 29 CFR 1904.41)
+	EIN                   *string `json:"ein,omitempty"`
+	CompanyName           *string `json:"company_name,omitempty"`
+	SizeCode              *string `json:"size_code,omitempty"`               // FK → ita_establishment_sizes
+	EstablishmentTypeCode *string `json:"establishment_type_code,omitempty"` // FK → ita_establishment_types
 }
 
 func (r *Repo) CreateEstablishment(user string, in EstablishmentInput) (int64, error) {
@@ -24,11 +29,13 @@ func (r *Repo) CreateEstablishment(user string, in EstablishmentInput) (int64, e
 		fmt.Sprintf("Created establishment: %s", in.Name),
 		`INSERT INTO establishments (name, street_address, city, state, zip,
 		        industry_description, naics_code, sic_code,
-		        peak_employees, annual_avg_employees)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		        peak_employees, annual_avg_employees,
+		        ein, company_name, size_code, establishment_type_code)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		in.Name, in.StreetAddress, in.City, in.State, in.Zip,
 		in.IndustryDescription, in.NAICSCode, in.SICCode,
 		in.PeakEmployees, in.AnnualAvgEmployees,
+		in.EIN, in.CompanyName, in.SizeCode, in.EstablishmentTypeCode,
 	)
 }
 
@@ -39,11 +46,13 @@ func (r *Repo) UpdateEstablishment(user string, id int64, in EstablishmentInput)
 		        name = ?, street_address = ?, city = ?, state = ?, zip = ?,
 		        industry_description = ?, naics_code = ?, sic_code = ?,
 		        peak_employees = ?, annual_avg_employees = ?,
+		        ein = ?, company_name = ?, size_code = ?, establishment_type_code = ?,
 		        updated_at = datetime('now')
 		 WHERE id = ?`,
 		in.Name, in.StreetAddress, in.City, in.State, in.Zip,
 		in.IndustryDescription, in.NAICSCode, in.SICCode,
 		in.PeakEmployees, in.AnnualAvgEmployees,
+		in.EIN, in.CompanyName, in.SizeCode, in.EstablishmentTypeCode,
 		id,
 	)
 }

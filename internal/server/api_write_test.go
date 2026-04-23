@@ -846,3 +846,141 @@ func TestCleanWaterSWPPPAndBMPs(t *testing.T) {
 		t.Errorf("expected >=1 SWPPP, got %d", list.Total)
 	}
 }
+
+// TestCreateEstablishmentWithITAFields — Phase 4a.3 round-trip on the
+// 4 new OSHA ITA reporting columns (ein, company_name, size_code,
+// establishment_type_code).
+func TestCreateEstablishmentWithITAFields(t *testing.T) {
+	tc := newTestServerWithDB(t)
+
+	body := `{
+		"name": "Acme ITA Test Plant",
+		"street_address": "900 Compliance Blvd",
+		"city": "Detroit",
+		"state": "MI",
+		"zip": "48201",
+		"naics_code": "325199",
+		"ein": "12-3456789",
+		"company_name": "Acme Chemical Holdings Inc.",
+		"size_code": "LARGE",
+		"establishment_type_code": "PRIVATE"
+	}`
+
+	req := httptest.NewRequest("POST", "/api/establishments", bytes.NewBufferString(body))
+	tc.authRequest(req)
+	w := httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("POST /api/establishments = %d; body: %s", w.Code, w.Body.String())
+	}
+
+	var created map[string]any
+	json.NewDecoder(w.Body).Decode(&created)
+	id := int(created["id"].(float64))
+
+	// Round-trip: read it back and verify each ITA field landed.
+	req = httptest.NewRequest("GET", "/api/establishments/"+itoa(id), nil)
+	w = httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET = %d; %s", w.Code, w.Body.String())
+	}
+
+	var row map[string]any
+	json.NewDecoder(w.Body).Decode(&row)
+
+	checks := map[string]string{
+		"ein":                     "12-3456789",
+		"company_name":            "Acme Chemical Holdings Inc.",
+		"size_code":               "LARGE",
+		"establishment_type_code": "PRIVATE",
+	}
+	for field, want := range checks {
+		if row[field] != want {
+			t.Errorf("%s = %v, want %q", field, row[field], want)
+		}
+	}
+}
+
+// TestCreateIncidentWithITAFields — Phase 4a.3 round-trip on the 6
+// new OSHA ITA per-incident columns (treatment_facility_type_code,
+// days_away_from_work, days_restricted_or_transferred, date_of_death,
+// time_unknown, injury_illness_description).
+func TestCreateIncidentWithITAFields(t *testing.T) {
+	tc := newTestServerWithDB(t)
+
+	// Seed an employee.
+	empBody := `{
+		"establishment_id": 1,
+		"first_name": "Alex",
+		"last_name": "Ramirez",
+		"job_title": "Process Operator"
+	}`
+	req := httptest.NewRequest("POST", "/api/employees", bytes.NewBufferString(empBody))
+	tc.authRequest(req)
+	w := httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create employee = %d; %s", w.Code, w.Body.String())
+	}
+	var emp map[string]any
+	json.NewDecoder(w.Body).Decode(&emp)
+	empID := int(emp["id"].(float64))
+
+	// Incident with all new ITA fields populated.
+	incBody := `{
+		"establishment_id": 1,
+		"employee_id": ` + itoa(empID) + `,
+		"incident_date": "2026-03-15",
+		"incident_description": "Fall from scaffold; fracture to left wrist.",
+		"severity_code": "LOST_TIME",
+		"case_classification_code": "INJURY",
+		"treatment_facility_type_code": "HOSPITAL_ER",
+		"days_away_from_work": 12,
+		"days_restricted_or_transferred": 0,
+		"time_unknown": 0,
+		"injury_illness_description": "Closed fracture of the left radius; splint applied; referred to orthopedic follow-up.",
+		"reported_by": "testuser"
+	}`
+	req = httptest.NewRequest("POST", "/api/incidents", bytes.NewBufferString(incBody))
+	tc.authRequest(req)
+	w = httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create incident = %d; %s", w.Code, w.Body.String())
+	}
+	var inc map[string]any
+	json.NewDecoder(w.Body).Decode(&inc)
+	incID := int(inc["id"].(float64))
+
+	// Round-trip.
+	req = httptest.NewRequest("GET", "/api/incidents/"+itoa(incID), nil)
+	w = httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET = %d; %s", w.Code, w.Body.String())
+	}
+	var row map[string]any
+	json.NewDecoder(w.Body).Decode(&row)
+
+	if row["treatment_facility_type_code"] != "HOSPITAL_ER" {
+		t.Errorf("treatment_facility_type_code = %v, want HOSPITAL_ER", row["treatment_facility_type_code"])
+	}
+	if row["days_away_from_work"].(float64) != 12 {
+		t.Errorf("days_away_from_work = %v, want 12", row["days_away_from_work"])
+	}
+	if row["days_restricted_or_transferred"].(float64) != 0 {
+		t.Errorf("days_restricted_or_transferred = %v, want 0", row["days_restricted_or_transferred"])
+	}
+	if row["time_unknown"].(float64) != 0 {
+		t.Errorf("time_unknown = %v, want 0", row["time_unknown"])
+	}
+	wantDesc := "Closed fracture of the left radius; splint applied; referred to orthopedic follow-up."
+	if row["injury_illness_description"] != wantDesc {
+		t.Errorf("injury_illness_description = %v, want %q", row["injury_illness_description"], wantDesc)
+	}
+	// date_of_death is nullable — not sent, not populated. Confirm null.
+	if row["date_of_death"] != nil {
+		t.Errorf("date_of_death = %v, want nil", row["date_of_death"])
+	}
+}

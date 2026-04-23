@@ -29,6 +29,13 @@ type IncidentInput struct {
 	WasERVisit             *int    `json:"was_er_visit,omitempty"`
 	ReportedBy             *string `json:"reported_by,omitempty"`
 	ReportedDate           *string `json:"reported_date,omitempty"`
+	// OSHA ITA fields (v3.3)
+	TreatmentFacilityTypeCode   *string `json:"treatment_facility_type_code,omitempty"` // FK → ita_treatment_facility_types
+	DaysAwayFromWork            *int    `json:"days_away_from_work,omitempty"`          // 29 CFR 1904.7(b)(3)
+	DaysRestrictedOrTransferred *int    `json:"days_restricted_or_transferred,omitempty"` // 29 CFR 1904.7(b)(4)
+	DateOfDeath                 *string `json:"date_of_death,omitempty"`                // YYYY-MM-DD
+	TimeUnknown                 *int    `json:"time_unknown,omitempty"`                 // Boolean flag (0/1)
+	InjuryIllnessDescription    *string `json:"injury_illness_description,omitempty"`   // OSHA 301 item 16
 }
 
 func (r *Repo) CreateIncident(user string, in IncidentInput) (int64, error) {
@@ -39,15 +46,21 @@ func (r *Repo) CreateIncident(user string, in IncidentInput) (int64, error) {
 		        location_description, activity_description, incident_description,
 		        object_or_substance, case_classification_code, body_part_code,
 		        severity_code, treatment_provided, treating_physician,
-		        treatment_facility, was_hospitalized, was_er_visit,
+		        treatment_facility, treatment_facility_type_code,
+		        was_hospitalized, was_er_visit,
+		        days_away_from_work, days_restricted_or_transferred,
+		        date_of_death, time_unknown, injury_illness_description,
 		        reported_by, reported_date)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		in.EstablishmentID, in.EmployeeID, in.CaseNumber,
 		in.IncidentDate, in.IncidentTime, in.TimeEmployeeBeganWork,
 		in.LocationDescription, in.ActivityDescription, in.IncidentDescription,
 		in.ObjectOrSubstance, in.CaseClassificationCode, in.BodyPartCode,
 		in.SeverityCode, in.TreatmentProvided, in.TreatingPhysician,
-		in.TreatmentFacility, in.WasHospitalized, in.WasERVisit,
+		in.TreatmentFacility, in.TreatmentFacilityTypeCode,
+		in.WasHospitalized, in.WasERVisit,
+		in.DaysAwayFromWork, in.DaysRestrictedOrTransferred,
+		in.DateOfDeath, in.TimeUnknown, in.InjuryIllnessDescription,
 		in.ReportedBy, in.ReportedDate,
 	)
 }
@@ -61,7 +74,10 @@ func (r *Repo) UpdateIncident(user string, id int64, in IncidentInput) error {
 		        location_description = ?, activity_description = ?, incident_description = ?,
 		        object_or_substance = ?, case_classification_code = ?, body_part_code = ?,
 		        severity_code = ?, treatment_provided = ?, treating_physician = ?,
-		        treatment_facility = ?, was_hospitalized = ?, was_er_visit = ?,
+		        treatment_facility = ?, treatment_facility_type_code = ?,
+		        was_hospitalized = ?, was_er_visit = ?,
+		        days_away_from_work = ?, days_restricted_or_transferred = ?,
+		        date_of_death = ?, time_unknown = ?, injury_illness_description = ?,
 		        reported_by = ?, reported_date = ?,
 		        updated_at = datetime('now')
 		 WHERE id = ?`,
@@ -70,7 +86,10 @@ func (r *Repo) UpdateIncident(user string, id int64, in IncidentInput) error {
 		in.LocationDescription, in.ActivityDescription, in.IncidentDescription,
 		in.ObjectOrSubstance, in.CaseClassificationCode, in.BodyPartCode,
 		in.SeverityCode, in.TreatmentProvided, in.TreatingPhysician,
-		in.TreatmentFacility, in.WasHospitalized, in.WasERVisit,
+		in.TreatmentFacility, in.TreatmentFacilityTypeCode,
+		in.WasHospitalized, in.WasERVisit,
+		in.DaysAwayFromWork, in.DaysRestrictedOrTransferred,
+		in.DateOfDeath, in.TimeUnknown, in.InjuryIllnessDescription,
 		in.ReportedBy, in.ReportedDate,
 		id,
 	)
