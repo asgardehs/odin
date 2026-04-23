@@ -4,6 +4,7 @@ import { api } from '../../api';
 import { SectionCard } from '../../components/forms/SectionCard';
 import { FormField } from '../../components/forms/FormField';
 import { FormActions } from '../../components/forms/FormActions';
+import { LookupDropdown } from '../../components/forms/LookupDropdown';
 import { useEntityMutation } from '../../hooks/useEntityMutation';
 import { useUnsavedGuard } from '../../hooks/useUnsavedGuard';
 
@@ -18,6 +19,11 @@ interface EstablishmentInput {
   sic_code?: string | null;
   peak_employees?: number | null;
   annual_avg_employees?: number | null;
+  // OSHA ITA fields (v3.3)
+  ein?: string | null;
+  company_name?: string | null;
+  size_code?: string | null;
+  establishment_type_code?: string | null;
 }
 
 const empty: EstablishmentInput = {
@@ -31,7 +37,23 @@ const empty: EstablishmentInput = {
   sic_code: '',
   peak_employees: null,
   annual_avg_employees: null,
+  ein: '',
+  company_name: '',
+  size_code: '',
+  establishment_type_code: '',
 };
+
+// EIN must be 9 digits, optionally hyphenated as XX-XXXXXXX.
+// ITA accepts either form on submission.
+const einPattern = /^(\d{2}-\d{7}|\d{9})$/;
+
+function validateEIN(v: string | null | undefined): string | undefined {
+  if (!v || v.trim() === '') return undefined;
+  if (!einPattern.test(v.trim())) {
+    return 'EIN must be 9 digits (XX-XXXXXXX or XXXXXXXXX)';
+  }
+  return undefined;
+}
 
 function normalizeForSubmit(form: EstablishmentInput): EstablishmentInput {
   const nullIfBlank = (s: string | null | undefined) =>
@@ -47,6 +69,10 @@ function normalizeForSubmit(form: EstablishmentInput): EstablishmentInput {
     sic_code: nullIfBlank(form.sic_code),
     peak_employees: form.peak_employees == null ? null : form.peak_employees,
     annual_avg_employees: form.annual_avg_employees == null ? null : form.annual_avg_employees,
+    ein: nullIfBlank(form.ein),
+    company_name: nullIfBlank(form.company_name),
+    size_code: nullIfBlank(form.size_code),
+    establishment_type_code: nullIfBlank(form.establishment_type_code),
   };
 }
 
@@ -77,6 +103,10 @@ export default function EstablishmentForm() {
           sic_code: (row.sic_code as string) ?? '',
           peak_employees: (row.peak_employees as number) ?? null,
           annual_avg_employees: (row.annual_avg_employees as number) ?? null,
+          ein: (row.ein as string) ?? '',
+          company_name: (row.company_name as string) ?? '',
+          size_code: (row.size_code as string) ?? '',
+          establishment_type_code: (row.establishment_type_code as string) ?? '',
         });
       })
       .finally(() => setLoading(false));
@@ -219,6 +249,43 @@ export default function EstablishmentForm() {
               label="Annual Average Employees"
               value={form.annual_avg_employees?.toString() ?? ''}
               onChange={v => update('annual_avg_employees', intField(v))}
+            />
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          title="OSHA Reporting"
+          description="Fields required for OSHA Injury Tracking Application (ITA) submission per 29 CFR 1904.41."
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              label="EIN (Employer Identification Number)"
+              value={form.ein ?? ''}
+              onChange={v => update('ein', v)}
+              placeholder="XX-XXXXXXX"
+              hint="9-digit IRS Employer Identification Number"
+              error={validateEIN(form.ein)}
+            />
+            <FormField
+              label="Company Name"
+              value={form.company_name ?? ''}
+              onChange={v => update('company_name', v)}
+              placeholder="Parent legal entity name"
+              hint="Distinct from the establishment/facility name above"
+            />
+            <LookupDropdown
+              table="ita_establishment_sizes"
+              label="Establishment Size"
+              value={form.size_code ?? ''}
+              onChange={v => update('size_code', v)}
+              placeholder="Select size category"
+            />
+            <LookupDropdown
+              table="ita_establishment_types"
+              label="Establishment Type"
+              value={form.establishment_type_code ?? ''}
+              onChange={v => update('establishment_type_code', v)}
+              placeholder="Select sector"
             />
           </div>
         </SectionCard>
