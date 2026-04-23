@@ -286,19 +286,19 @@ export default function IncidentForm() {
               onChange={v => update('severity_code', v)}
               options={severityOptions}
             />
-            <FormField
-              label="Case Classification Code"
+            <LookupDropdown
+              table="case_classifications"
+              label="Case Classification"
               value={form.case_classification_code}
               onChange={v => update('case_classification_code', v)}
-              placeholder="e.g. INJURY, SKIN, RESP"
-              hint="Matches the case_classifications lookup table."
+              placeholder="Select classification"
             />
-            <FormField
-              label="Body Part Code"
+            <LookupDropdown
+              table="body_parts"
+              label="Body Part"
               value={form.body_part_code}
               onChange={v => update('body_part_code', v)}
-              placeholder="e.g. HAND, EYE, BACK"
-              hint="Matches the body_parts lookup table."
+              placeholder="Select body part"
             />
           </div>
         </SectionCard>
