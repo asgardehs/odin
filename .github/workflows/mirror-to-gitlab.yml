@@ -1,0 +1,28 @@
+name: Mirror to GitLab
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push main to GitLab
+        env:
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+          GITLAB_REPO_URL: ${{ secrets.GITLAB_REPO_URL }}
+        run: |
+          # GITLAB_REPO_URL looks like: https://gitlab.com/asgard-ehs/<repo>.git
+          # Reassemble with token auth: https://oauth2:<token>@gitlab.com/asgard-ehs/<repo>.git
+          url_without_scheme="${GITLAB_REPO_URL#https://}"
+          authed_url="https://oauth2:${GITLAB_TOKEN}@${url_without_scheme}"
+          git remote add gitlab "$authed_url"
+          git push gitlab main --force
