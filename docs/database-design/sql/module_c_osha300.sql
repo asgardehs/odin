@@ -915,27 +915,71 @@ LEFT JOIN ita_treatment_facility_types tft
 DROP VIEW IF EXISTS v_osha_ita_summary;
 CREATE VIEW v_osha_ita_summary AS
 SELECT
-    est.id                                                                      AS establishment_id,
-    est.name                                                                    AS establishment_name,
-    est.street_address                                                          AS establishment_street,
-    est.city                                                                    AS establishment_city,
-    est.state                                                                    AS establishment_state,
-    est.zip                                                                      AS establishment_zip,
-    est.naics_code,
-    est.annual_avg_employees,
-    est.total_hours_worked,
-    strftime('%Y', i.incident_date)                                             AS reporting_year,
-    SUM(CASE WHEN iom.ita_outcome_code = 'DEATH'                    THEN 1 ELSE 0 END) AS total_deaths,
-    SUM(CASE WHEN iom.ita_outcome_code = 'DAYS_AWAY'                THEN 1 ELSE 0 END) AS total_days_away_cases,
-    SUM(CASE WHEN iom.ita_outcome_code = 'JOB_TRANSFER_RESTRICTION' THEN 1 ELSE 0 END) AS total_job_transfer_restriction_cases,
-    SUM(CASE WHEN iom.ita_outcome_code = 'OTHER_RECORDABLE'         THEN 1 ELSE 0 END) AS total_other_recordable_cases,
-    COUNT(*)                                                                    AS total_recordable_cases,
-    CASE WHEN COUNT(*) = 0 THEN 'Y' ELSE 'N' END                                AS no_injuries_illnesses
+    -- 28 ITA summary CSV columns in spec order. Go exporter SELECTs
+    -- these by name to guarantee CSV column order.
+    est.name                                                                    AS establishment_name,         -- 1
+    est.ein                                                                     AS ein,                         -- 2
+    est.company_name                                                            AS company_name,                -- 3
+    est.street_address                                                          AS street_address,              -- 4
+    est.city                                                                    AS city,                        -- 5
+    est.state                                                                   AS state,                       -- 6
+    est.zip                                                                     AS zip,                         -- 7
+    est.naics_code                                                              AS naics_code,                  -- 8
+    est.industry_description                                                    AS industry_description,        -- 9
+    ies.name                                                                    AS size,                        -- 10
+    iet.name                                                                    AS establishment_type,          -- 11
+    strftime('%Y', i.incident_date)                                             AS year_filing_for,             -- 12
+    est.annual_avg_employees                                                    AS annual_average_employees,    -- 13
+    est.total_hours_worked                                                      AS total_hours_worked,          -- 14
+
+    -- no_injuries_illnesses: 'Y' when zero recordable incidents for this
+    -- (establishment, year) combo. Establishments with zero incidents in a
+    -- year do not appear in this view at all — the Go exporter handles
+    -- that fallback by synthesizing a zero-row with no_injuries_illnesses='Y'
+    -- when the query returns no rows.
+    CASE WHEN COUNT(*) = 0 THEN 'Y' ELSE 'N' END                                AS no_injuries_illnesses,       -- 15
+
+    -- Case counts by ITA outcome
+    SUM(CASE WHEN iom.ita_outcome_code = 'DEATH'                    THEN 1 ELSE 0 END) AS total_deaths,          -- 16
+    SUM(CASE WHEN iom.ita_outcome_code = 'DAYS_AWAY'                THEN 1 ELSE 0 END) AS total_dafw_cases,      -- 17
+    SUM(CASE WHEN iom.ita_outcome_code = 'JOB_TRANSFER_RESTRICTION' THEN 1 ELSE 0 END) AS total_djtr_cases,      -- 18
+    SUM(CASE WHEN iom.ita_outcome_code = 'OTHER_RECORDABLE'         THEN 1 ELSE 0 END) AS total_other_cases,     -- 19
+
+    -- Day-sum totals (nulls treated as 0)
+    SUM(COALESCE(i.days_away_from_work, 0))                                     AS total_dafw_days,             -- 20
+    SUM(COALESCE(i.days_restricted_or_transferred, 0))                          AS total_djtr_days,             -- 21
+
+    -- Case counts by ITA type (1:1 with case_classification)
+    SUM(CASE WHEN itm.ita_case_type_code = 'INJURY'                 THEN 1 ELSE 0 END) AS total_injuries,                -- 22
+    SUM(CASE WHEN itm.ita_case_type_code = 'SKIN_DISORDER'          THEN 1 ELSE 0 END) AS total_skin_disorders,          -- 23
+    SUM(CASE WHEN itm.ita_case_type_code = 'RESPIRATORY_CONDITION'  THEN 1 ELSE 0 END) AS total_respiratory_conditions,  -- 24
+    SUM(CASE WHEN itm.ita_case_type_code = 'POISONING'              THEN 1 ELSE 0 END) AS total_poisonings,              -- 25
+    SUM(CASE WHEN itm.ita_case_type_code = 'HEARING_LOSS'           THEN 1 ELSE 0 END) AS total_hearing_loss,            -- 26
+    SUM(CASE WHEN itm.ita_case_type_code = 'OTHER_ILLNESS'          THEN 1 ELSE 0 END) AS total_other_illnesses,         -- 27
+
+    -- change_reason: free-text explanation when submission is an amendment.
+    -- odin has no amendment tracking yet; always NULL. Add when amendment
+    -- flow is built.
+    NULL                                                                        AS change_reason,               -- 28
+
+    -- Auxiliary filter column (NOT emitted in CSV). Go exporter uses
+    -- establishment_id + year_filing_for in WHERE clauses.
+    est.id                                                                      AS establishment_id
 FROM establishments est
-LEFT JOIN incidents i
+-- INNER JOIN: only (establishment, year) combos with at least one
+-- recordable incident appear in this view. Exporter emits a synthesized
+-- "no injuries or illnesses" row when a specific (establishment_id,
+-- year_filing_for) combo returns no rows.
+INNER JOIN incidents i
     ON i.establishment_id = est.id
-LEFT JOIN ita_outcome_mapping iom
+INNER JOIN ita_outcome_mapping iom
     ON iom.severity_code = i.severity_code
+LEFT JOIN ita_case_type_mapping itm
+    ON itm.case_classification_code = i.case_classification_code
+LEFT JOIN ita_establishment_sizes ies
+    ON ies.code = est.size_code
+LEFT JOIN ita_establishment_types iet
+    ON iet.code = est.establishment_type_code
 GROUP BY est.id, strftime('%Y', i.incident_date);
 
 
