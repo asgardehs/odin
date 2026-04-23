@@ -841,43 +841,60 @@ INSERT OR IGNORE INTO ita_case_type_mapping (case_classification_code, ita_case_
 DROP VIEW IF EXISTS v_osha_ita_detail;
 CREATE VIEW v_osha_ita_detail AS
 SELECT
-    i.id                                    AS incident_id,
-    i.case_number,
-    i.establishment_id,
-    est.name                                AS establishment_name,
-    est.street_address                      AS establishment_street,
-    est.city                                AS establishment_city,
-    est.state                                AS establishment_state,
-    est.zip                                  AS establishment_zip,
-    est.naics_code,
-    i.incident_date,
-    i.incident_time,
-    i.time_employee_began_work,
-    i.activity_description                  AS nar_before_incident,
-    i.incident_description                  AS nar_what_happened,
-    i.object_or_substance                   AS nar_object_substance,
-    emp.first_name                          AS employee_first_name,
-    emp.last_name                           AS employee_last_name,
-    emp.date_of_birth                       AS employee_dob,
-    emp.date_hired                          AS employee_date_hired,
-    emp.gender                              AS employee_gender,
-    emp.job_title                           AS employee_job_title,
-    i.case_classification_code,
-    itm.ita_case_type_code                  AS ita_incident_type,
-    i.severity_code,
-    iom.ita_outcome_code                    AS ita_incident_outcome,
-    i.was_hospitalized,
-    i.was_er_visit,
-    strftime('%Y', i.incident_date)         AS reporting_year
+    -- 24 ITA CSV columns in spec order. Go exporter SELECTs these by
+    -- name to guarantee CSV column order regardless of view layout.
+    est.name                                  AS establishment_name,     -- 1
+    strftime('%Y', i.incident_date)           AS year_of_filing,         -- 2
+    i.case_number                             AS case_number,             -- 3
+    emp.job_title                             AS job_title,               -- 4
+    i.incident_date                           AS date_of_incident,        -- 5
+    i.location_description                    AS incident_location,       -- 6
+    i.incident_description                    AS incident_description,    -- 7
+    iio.name                                  AS incident_outcome,        -- 8
+    i.days_away_from_work                     AS dafw_num_away,           -- 9
+    i.days_restricted_or_transferred          AS djtr_num_tr,             -- 10
+    iit.name                                  AS type_of_incident,        -- 11
+    emp.date_of_birth                         AS date_of_birth,           -- 12
+    emp.date_hired                            AS date_of_hire,            -- 13
+    emp.gender                                AS sex,                     -- 14
+    tft.name                                  AS treatment_facility_type, -- 15
+    CASE WHEN i.was_hospitalized = 1 THEN 'Y' ELSE 'N' END
+                                              AS treatment_in_patient,    -- 16
+    i.time_employee_began_work                AS time_started_work,       -- 17
+    i.incident_time                           AS time_of_incident,        -- 18
+    CASE WHEN i.time_unknown = 1 THEN 'Y' ELSE 'N' END
+                                              AS time_unknown,            -- 19
+    i.activity_description                    AS nar_before_incident,     -- 20
+    i.incident_description                    AS nar_what_happened,       -- 21
+    i.injury_illness_description              AS nar_injury_illness,      -- 22
+    i.object_or_substance                     AS nar_object_substance,    -- 23
+    i.date_of_death                           AS date_of_death,           -- 24
+
+    -- Auxiliary filter columns (NOT emitted in CSV; used by Go
+    -- exporter's WHERE clause). Keeping them inside the view lets the
+    -- filter live next to the shape.
+    i.establishment_id                        AS establishment_id,
+    i.id                                      AS incident_id
 FROM incidents i
+-- INNER JOIN: only OSHA-recordable severities flow to ITA.
+-- Non-recordable severities (FirstAid / NearMiss / PropertyDamage /
+-- Environmental) have no row in ita_outcome_mapping and are filtered
+-- out here by design. This matches the ontology's "absence-is-
+-- normative" SKOS modeling from v3.3.
 INNER JOIN ita_outcome_mapping iom
     ON iom.severity_code = i.severity_code
+INNER JOIN ita_incident_outcomes iio
+    ON iio.code = iom.ita_outcome_code
 LEFT JOIN ita_case_type_mapping itm
     ON itm.case_classification_code = i.case_classification_code
+LEFT JOIN ita_incident_types iit
+    ON iit.code = itm.ita_case_type_code
 INNER JOIN establishments est
     ON est.id = i.establishment_id
 LEFT JOIN employees emp
-    ON emp.id = i.employee_id;
+    ON emp.id = i.employee_id
+LEFT JOIN ita_treatment_facility_types tft
+    ON tft.code = i.treatment_facility_type_code;
 
 
 -- ============================================================================
