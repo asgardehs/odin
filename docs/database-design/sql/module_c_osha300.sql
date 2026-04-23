@@ -29,9 +29,18 @@ CREATE TABLE IF NOT EXISTS establishments (
     annual_avg_employees INTEGER,
     total_hours_worked INTEGER,                -- Updated yearly for rate calculations
 
+    -- OSHA ITA reporting fields (v3.3, 29 CFR 1904.41)
+    ein TEXT,                                   -- IRS Employer Identification Number (XX-XXXXXXX)
+    company_name TEXT,                          -- Parent legal entity name (distinct from establishment name)
+    size_code TEXT,                             -- FK → ita_establishment_sizes
+    establishment_type_code TEXT,               -- FK → ita_establishment_types
+
     is_active INTEGER DEFAULT 1,
     created_at TEXT DEFAULT (datetime('now')),
-    updated_at TEXT DEFAULT (datetime('now'))
+    updated_at TEXT DEFAULT (datetime('now')),
+
+    FOREIGN KEY (size_code) REFERENCES ita_establishment_sizes(code),
+    FOREIGN KEY (establishment_type_code) REFERENCES ita_establishment_types(code)
 );
 
 CREATE TABLE IF NOT EXISTS employees (
@@ -291,9 +300,17 @@ CREATE TABLE IF NOT EXISTS incidents (
     -- Treatment
     treatment_provided TEXT,                    -- What treatment was given
     treating_physician TEXT,                    -- OSHA 301 item 6
-    treatment_facility TEXT,                    -- OSHA 301 item 7
+    treatment_facility TEXT,                    -- OSHA 301 item 7 (facility name/address, free text)
+    treatment_facility_type_code TEXT,          -- FK → ita_treatment_facility_types (v3.3)
     was_hospitalized INTEGER DEFAULT 0,         -- In-patient admission (triggers OSHA 24-hr report)
     was_er_visit INTEGER DEFAULT 0,
+
+    -- OSHA ITA fields (v3.3)
+    days_away_from_work INTEGER,                -- 29 CFR 1904.7(b)(3), 180-day cap
+    days_restricted_or_transferred INTEGER,     -- 29 CFR 1904.7(b)(4), 180-day cap shared with days_away_from_work
+    date_of_death TEXT,                         -- YYYY-MM-DD; nullable; populated when case transitions to fatality
+    time_unknown INTEGER DEFAULT 0,             -- Boolean; 1 when incident_time cannot be determined
+    injury_illness_description TEXT,            -- OSHA 301 item 16 / ITA nar_injury_illness (distinct from incident_description)
 
     -- Reporting
     reported_by TEXT,
@@ -311,7 +328,8 @@ CREATE TABLE IF NOT EXISTS incidents (
     FOREIGN KEY (employee_id) REFERENCES employees(id),
     FOREIGN KEY (case_classification_code) REFERENCES case_classifications(code),
     FOREIGN KEY (body_part_code) REFERENCES body_parts(code),
-    FOREIGN KEY (severity_code) REFERENCES incident_severity_levels(code)
+    FOREIGN KEY (severity_code) REFERENCES incident_severity_levels(code),
+    FOREIGN KEY (treatment_facility_type_code) REFERENCES ita_treatment_facility_types(code)
 );
 
 CREATE INDEX idx_incidents_establishment ON incidents(establishment_id);
@@ -784,33 +802,20 @@ INSERT OR IGNORE INTO ita_case_type_mapping (case_classification_code, ita_case_
 
 
 -- ============================================================================
--- DEFERRED: Column additions on establishments and incidents
+-- MIGRATION-RUNNER TICKET (still deferred)
 -- ============================================================================
--- The following ALTER TABLE statements are deferred to the migration-runner
--- ticket. They are stubbed as SQL comments so fresh-install review captures
--- the intended shape without executing ALTERs that would fail idempotency on
--- existing databases.
+-- For FRESH installs, the 4 + 6 new ITA columns now land directly via the
+-- CREATE TABLE definitions above (establishments + incidents). No ALTER
+-- TABLE statements appear in this file.
 --
--- On establishments (4 new columns):
---   -- ALTER TABLE establishments ADD COLUMN ein TEXT;
---   -- ALTER TABLE establishments ADD COLUMN company_name TEXT;
---   -- ALTER TABLE establishments ADD COLUMN size_code TEXT
---       REFERENCES ita_establishment_sizes(code);
---   -- ALTER TABLE establishments ADD COLUMN establishment_type_code TEXT
---       REFERENCES ita_establishment_types(code);
+-- For EXISTING installed databases, a separate migration runner (tracked as
+-- its own ticket) must issue the equivalent ALTER TABLE ADD COLUMN statements
+-- with pragma_table_info idempotency guards. That ticket is outside this
+-- file's scope.
 --
--- On incidents (6 new columns):
---   -- ALTER TABLE incidents ADD COLUMN days_away_from_work INTEGER;
---   -- ALTER TABLE incidents ADD COLUMN days_restricted_or_transferred INTEGER;
---   -- ALTER TABLE incidents ADD COLUMN date_of_death TEXT;  -- YYYY-MM-DD
---   -- ALTER TABLE incidents ADD COLUMN treatment_facility_type_code TEXT
---       REFERENCES ita_treatment_facility_types(code);
---   -- ALTER TABLE incidents ADD COLUMN time_unknown INTEGER DEFAULT 0;
---   -- ALTER TABLE incidents ADD COLUMN injury_illness_description TEXT;
---
--- Until the migration runner handles these, the views below reference only
--- columns that already exist. A future patch will widen the views once the
--- new columns land.
+-- Views below still emit only existing-column shape; they widen to the full
+-- ITA detail / summary shape in a follow-up commit once the Go repository
+-- and frontend plumbing lands.
 
 
 -- ============================================================================
