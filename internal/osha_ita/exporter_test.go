@@ -31,6 +31,11 @@ func seedExportTestDB(t *testing.T) (*database.DB, int64) {
 	if err := database.Migrate(db, migrations); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
+	// Views live in a sibling directory, re-executed every startup in prod.
+	viewsDir := os.DirFS("../../docs/database-design/sql/views")
+	if err := database.LoadViews(db, viewsDir); err != nil {
+		t.Fatalf("load views: %v", err)
+	}
 
 	// Establishment with all ITA fields populated.
 	if err := db.ExecParams(

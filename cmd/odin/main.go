@@ -70,6 +70,16 @@ func main() {
 		log.Fatalf("app migrate: %v", err)
 	}
 
+	// Load (re-create) all views. Runs on every startup so pulled
+	// changes to view bodies take effect without a DB reset.
+	viewsFS, err := fs.Sub(odin.SchemaViews, "docs/database-design/sql/views")
+	if err != nil {
+		log.Fatalf("embedded views not found: %v", err)
+	}
+	if err := database.LoadViews(db, viewsFS); err != nil {
+		log.Fatalf("load views: %v", err)
+	}
+
 	// Set up git-backed audit trail.
 	auditStore, err := audit.NewStore(filepath.Join(dataDir, "audit"), authenticator)
 	if err != nil {

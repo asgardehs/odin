@@ -58,6 +58,12 @@ func newTestServerWithDB(t *testing.T) *testContext {
 	if err := database.Migrate(db, migrations); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
+	// Views re-loaded on every startup in prod; mirror that here so
+	// exporter / lookup / route tests hit the widened shape.
+	viewsDir := os.DirFS("../../docs/database-design/sql/views")
+	if err := database.LoadViews(db, viewsDir); err != nil {
+		t.Fatalf("load views: %v", err)
+	}
 
 	// Apply app migrations (auth, schema-builder metadata, etc.) in
 	// alphabetical order so tests mirror the production bootstrap.
