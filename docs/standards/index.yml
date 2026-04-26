@@ -1,0 +1,57 @@
+api:
+  entity-routes:
+    description: entityRoutes helper for single-table list+get+search routes
+  response-helpers:
+    description: writeJSON / writeError envelope and intentional bypasses
+  whitelist-params:
+    description: Server-side whitelist for routes that take SQL identifiers
+
+backend:
+  audit-entry:
+    description: audit.Entry shape and best-effort write semantics
+  auth-gates:
+    description: requireAuth / requireAdmin per-handler gates and the public route list
+  repository:
+    description: XxxInput struct, pointer-to-optional, raw-SQL pattern (no ORM)
+
+database:
+  delta-files:
+    description: Forward-only catch-up migrations under sql/deltas/, naming + idempotency rules
+  foreign-keys:
+    description: PRAGMA foreign_keys=ON contract, moduleOrder dependency, SQLite ALTER limits
+  module-files:
+    description: Authoritative module SQL files, moduleOrder slice, idempotent statements
+  seed-data:
+    description: Lookup-table shape (code/name/description), INSERT OR IGNORE, natural-key PKs
+  three-layer-migrations:
+    description: Modules vs deltas vs views — when to use each layer
+  view-files:
+    description: sql/views/*.sql DROP+CREATE pattern, re-run every startup, no module CREATE VIEW
+
+javascript:
+  autocomplete-default:
+    description: FormField defaults autoComplete="off"; explicit override for known autofill types only
+  form-field:
+    description: Discriminated-union FormField primitive; never bypass with raw input elements
+  form-hooks:
+    description: Pair useEntityMutation (HTTP) with useUnsavedGuard (navigation prompt); orthogonal concerns
+  form-normalize:
+    description: Per-form normalizeForSubmit + nullIfBlank; runs at submit, not on change
+  lookup-dropdown:
+    description: Data-aware wrapper over FormField select; fetches /api/lookup/{table} + hint-layering
+  section-card:
+    description: Standard wrapper for multi-field form sections; descriptions surface non-expert ergonomics
+
+testing:
+  auth-stubs:
+    description: mockAuth / stubAuth bypass real PAM verification; real UserStore + SessionStore retained
+  cleanup-pattern:
+    description: t.Cleanup over defer for all resource teardown
+  db-harness:
+    description: In-memory SQLite with production-parity Migrate→ApplyDeltas→LoadViews startup
+  http-level-tests:
+    description: httptest.NewRecorder + srv.mux.ServeHTTP; never call handler functions directly
+  inline-fixtures:
+    description: No shared seed helpers; each test (or test family) seeds inline
+  realistic-fixtures:
+    description: Plausible domain data (real EHS codes, valid formats); failures read as scenarios
