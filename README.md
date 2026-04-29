@@ -167,8 +167,8 @@ pipeline, schema builder design, and ecosystem integration plans — see the
 - **License:** GPL-3.0 — see [LICENSE](LICENSE)
 - **Code of Conduct:** see [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 - **Contributing:** see [CONTRIBUTING.md](CONTRIBUTING.md)
-- **Security:** report vulnerabilities to
-  [muninn.developer@protonmail.com](mailto:muninn.developer@protonmail.com)
+- **Security:** see [SECURITY](SECURITY.md)
+  
 
 ## Name
 
