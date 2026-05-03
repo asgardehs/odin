@@ -17,8 +17,11 @@ import (
 
 // testContext holds a test server + session token for authenticated requests.
 type testContext struct {
-	srv   *Server
-	token string
+	srv      *Server
+	token    string
+	users    *auth.UserStore
+	sessions *auth.SessionStore
+	recovery *auth.RecoveryStore
 }
 
 // authRequest adds the test session token to a request.
@@ -113,7 +116,13 @@ func newTestServerWithDB(t *testing.T) *testContext {
 
 	recoveryStore := auth.NewRecoveryStore(db)
 	srv := New(frontend, a, store, db, userStore, sessionStore, recoveryStore)
-	return &testContext{srv: srv, token: token}
+	return &testContext{
+		srv:      srv,
+		token:    token,
+		users:    userStore,
+		sessions: sessionStore,
+		recovery: recoveryStore,
+	}
 }
 
 // TestListSearchFilter verifies that ?q= filters results on configured

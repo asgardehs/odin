@@ -448,17 +448,19 @@ func (s *Server) handleRecover(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Reset password, reactivate if needed, and ensure admin role.
+	// Recovery is an admin-rescue mechanism only — refuse to reset
+	// non-admin accounts so possession of the recovery key cannot
+	// be used to elevate or unlock arbitrary users.
+	if user.Role != "admin" {
+		writeError(w, "recovery is restricted to admin accounts", http.StatusForbidden)
+		return
+	}
+
+	// Reset password and reactivate if the account was deactivated.
 	if err := s.users.SetPassword(user.ID, req.NewPassword); err != nil {
 		writeError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	// Reactivate the user if they were deactivated, and ensure admin role.
-	s.users.Update(user.ID, auth.UserInput{
-		DisplayName: user.DisplayName,
-		Role:        "admin",
-	})
 	// Force reactivation in case the account was deactivated.
 	s.users.Reactivate(user.ID)
 
