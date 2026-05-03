@@ -69,8 +69,8 @@ func (s *Server) handleSchemaCreateTable(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	var in schemabuilder.CustomTableInput
-	if err := readJSON(r, &in); err != nil {
-		writeError(w, "invalid request body", http.StatusBadRequest)
+	if err := readJSON(w, r, &in); err != nil {
+		writeBodyError(w, err)
 		return
 	}
 	id, err := s.schemaExec.CreateTable(admin.Username, in)
@@ -170,8 +170,8 @@ func (s *Server) handleSchemaAddField(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var in schemabuilder.CustomFieldInput
-	if err := readJSON(r, &in); err != nil {
-		writeError(w, "invalid request body", http.StatusBadRequest)
+	if err := readJSON(w, r, &in); err != nil {
+		writeBodyError(w, err)
 		return
 	}
 	fieldID, err := s.schemaExec.AddField(admin.Username, tableID, in)
@@ -221,8 +221,8 @@ func (s *Server) handleSchemaAddRelation(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	var in schemabuilder.CustomRelationInput
-	if err := readJSON(r, &in); err != nil {
-		writeError(w, "invalid request body", http.StatusBadRequest)
+	if err := readJSON(w, r, &in); err != nil {
+		writeBodyError(w, err)
 		return
 	}
 	relID, err := s.schemaExec.AddRelation(admin.Username, tableID, in)
@@ -462,8 +462,8 @@ func (s *Server) handleRecordCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var values map[string]any
-	if err := readJSON(r, &values); err != nil {
-		writeError(w, "invalid request body", http.StatusBadRequest)
+	if err := readJSON(w, r, &values); err != nil {
+		writeBodyError(w, err)
 		return
 	}
 
@@ -513,8 +513,8 @@ func (s *Server) handleRecordUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var values map[string]any
-	if err := readJSON(r, &values); err != nil {
-		writeError(w, "invalid request body", http.StatusBadRequest)
+	if err := readJSON(w, r, &values); err != nil {
+		writeBodyError(w, err)
 		return
 	}
 
@@ -695,8 +695,11 @@ func schemaErrorStatus(err error) int {
 	return http.StatusInternalServerError
 }
 
-func readJSON(r *http.Request, into any) error {
-	body, err := readBody(r)
+// readJSON reads the request body (capped by readBody) and unmarshals
+// into `into`. Errors propagate unchanged so callers can route them
+// through writeBodyError for the right HTTP status (413 vs 400).
+func readJSON(w http.ResponseWriter, r *http.Request, into any) error {
+	body, err := readBody(w, r)
 	if err != nil {
 		return err
 	}

@@ -2,11 +2,18 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"strconv"
 
 	"github.com/asgardehs/odin/internal/repository"
 )
+
+// MaxRequestBody caps the bytes accepted from a single request body.
+// Anything larger surfaces as *http.MaxBytesError, which writeBodyError
+// maps to 413 Payload Too Large.
+const MaxRequestBody = 1 << 20 // 1 MiB
 
 // writeRoutes registers POST, PUT, DELETE endpoints for entities
 // that have repository-backed CRUD with audit trail recording.
@@ -750,9 +757,9 @@ func (s *Server) handleCreate(fn func(user string, body []byte) (int64, error)) 
 		if authedUser == nil {
 			return
 		}
-		body, err := readBody(r)
+		body, err := readBody(w, r)
 		if err != nil {
-			writeError(w, "invalid request body", http.StatusBadRequest)
+			writeBodyError(w, err)
 			return
 		}
 		id, err := fn(authedUser.Username, body)
@@ -778,9 +785,9 @@ func (s *Server) handleUpdate(fn func(user string, id int64, body []byte) error)
 			writeError(w, "invalid id", http.StatusBadRequest)
 			return
 		}
-		body, err := readBody(r)
+		body, err := readBody(w, r)
 		if err != nil {
-			writeError(w, "invalid request body", http.StatusBadRequest)
+			writeBodyError(w, err)
 			return
 		}
 		if err := fn(authedUser.Username, id, body); err != nil {
@@ -824,7 +831,17 @@ func (s *Server) handleAction(fn func(user string, id int64, body []byte) error)
 			writeError(w, "invalid id", http.StatusBadRequest)
 			return
 		}
-		body, _ := readBody(r) // body is optional for actions
+		// Body is optional for actions; oversized bodies still rejected
+		// (a client should not be able to send 100 MB to /close).
+		body, err := readBody(w, r)
+		if err != nil {
+			var maxErr *http.MaxBytesError
+			if errors.As(err, &maxErr) {
+				writeBodyError(w, err)
+				return
+			}
+			body = nil // other read errors → treat as no body, per "optional"
+		}
 		if err := fn(authedUser.Username, id, body); err != nil {
 			writeError(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -837,12 +854,26 @@ func parseID(r *http.Request) (int64, error) {
 	return strconv.ParseInt(r.PathValue("id"), 10, 64)
 }
 
-func readBody(r *http.Request) ([]byte, error) {
+// readBody reads the request body, enforcing MaxRequestBody. Bodies that
+// exceed the cap surface as *http.MaxBytesError; other read errors are
+// returned as-is. Callers should route the error through writeBodyError
+// so oversized bodies become 413 instead of a misleading 400.
+//
+// The ResponseWriter is needed so http.MaxBytesReader can signal a
+// connection close on overflow — passing nil disables that signal.
+func readBody(w http.ResponseWriter, r *http.Request) ([]byte, error) {
 	defer r.Body.Close()
-	var buf [1 << 20]byte // 1MB max
-	n, err := r.Body.Read(buf[:])
-	if err != nil && err.Error() != "EOF" {
-		return nil, err
+	return io.ReadAll(http.MaxBytesReader(w, r.Body, MaxRequestBody))
+}
+
+// writeBodyError maps a readBody error to the right HTTP status:
+// *http.MaxBytesError → 413 (so the client knows to retry smaller),
+// anything else → 400.
+func writeBodyError(w http.ResponseWriter, err error) {
+	var maxErr *http.MaxBytesError
+	if errors.As(err, &maxErr) {
+		writeError(w, "request body exceeds limit", http.StatusRequestEntityTooLarge)
+		return
 	}
-	return buf[:n], nil
+	writeError(w, "invalid request body", http.StatusBadRequest)
 }

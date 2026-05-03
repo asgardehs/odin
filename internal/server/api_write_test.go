@@ -3,10 +3,13 @@ package server
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"testing"
+	"testing/iotest"
 )
 
 func TestCreateEstablishment(t *testing.T) {
@@ -1043,5 +1046,48 @@ func TestLookupRoute(t *testing.T) {
 	tc.srv.mux.ServeHTTP(w, req)
 	if w.Code != http.StatusNotFound {
 		t.Errorf("GET /api/lookup/no_such_table = %d, want 404", w.Code)
+	}
+}
+
+// TestReadBody_OversizedReturns413 verifies that bodies exceeding
+// MaxRequestBody are rejected with 413 Payload Too Large rather than
+// being silently truncated.
+func TestReadBody_OversizedReturns413(t *testing.T) {
+	tc := newTestServerWithDB(t)
+
+	// Build a JSON payload whose `name` field alone is bigger than the cap.
+	huge := strings.Repeat("A", MaxRequestBody+1024)
+	body := `{"name":"` + huge + `","street_address":"x","city":"x","state":"TX","zip":"77001","naics_code":"325199"}`
+
+	req := httptest.NewRequest("POST", "/api/establishments", strings.NewReader(body))
+	tc.authRequest(req)
+	w := httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("oversized POST = %d, want 413; body: %s", w.Code, w.Body.String())
+	}
+}
+
+// TestReadBody_MultiReadBodySucceeds guards against the regression
+// where readBody used a single r.Body.Read() call and silently truncated
+// any body that arrived in multiple chunks. Wrapping the body in
+// iotest.OneByteReader forces every Read() to return exactly one byte,
+// so the old implementation would have lost everything past byte 1.
+func TestReadBody_MultiReadBodySucceeds(t *testing.T) {
+	tc := newTestServerWithDB(t)
+
+	body := `{"name":"Chunked Plant","street_address":"1 Slow Lane","city":"Reno","state":"NV","zip":"89501","naics_code":"325199"}`
+
+	req := httptest.NewRequest(
+		"POST", "/api/establishments",
+		io.NopCloser(iotest.OneByteReader(strings.NewReader(body))),
+	)
+	tc.authRequest(req)
+	w := httptest.NewRecorder()
+	tc.srv.mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("chunked POST = %d, want 201; body: %s", w.Code, w.Body.String())
 	}
 }
