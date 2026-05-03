@@ -55,27 +55,6 @@ Ideas we want to preserve but are explicitly not in scope for this plan.
   drifting when the same custom table is wanted in multiple places.
   Not in scope for the initial Schema Builder phase.
 
-- **Proper transaction isolation for the DB mutex.** Today
-  `internal/database/DB` serializes every Exec/Query through a single
-  process-wide `sync.Mutex` — required because `ncruces/go-sqlite3`
-  (WASM) exposes a single `*sqlite3.Conn` that is NOT safe for
-  concurrent use, and without the mutex parallel HTTP handlers cause
-  `index out of range` panics inside the WASM internals. Per-call
-  locking is enough to prevent the crash, but
-  `schemabuilder.Executor.withSavepoint` only holds the lock during
-  individual statements — another goroutine can sneak a DB op into
-  the middle of an open SAVEPOINT, which in SQLite means that op
-  participates in the savepoint's transaction stack. For a single-user
-  desktop app this is rare and low-blast-radius (admin DDL rarely
-  races with other mutations), but it's a real correctness gap. Fix
-  shape: expose `db.WithTx(fn func(tx *TxHandle) error) error` that
-  holds the mutex for the whole callback and passes unlocked
-  primitives (`tx.Exec`, `tx.QueryRow`, `tx.ExecParams`) to the
-  callback. Migrate `withSavepoint` to use it; remove the ad-hoc
-  SAVEPOINT/RELEASE sequencing. Consider a connection-pool approach
-  (one `*sqlite3.Conn` per goroutine) if per-call locking ever
-  becomes a perf bottleneck.
-
 - **Clickable Inspection Findings — read-only detail modal.** Today findings
   are listed on the Inspection detail page but can't be opened. A user should
   be able to click a row and see the full record (description, citation,
@@ -94,6 +73,123 @@ _ **Inspections** Create a tool similar to Schema Builder, to allow for users to
 - **New Audits** We supply a Integrated audit check box, but not a way for the user to select what ISO Frameworks are Integrated. 
 
 _**Export** Design Export Function for Admins to be able to Export records to xlsx, json, or csv.
+
+## OSHA ITA exporter — pre-ship hardening (from 2026-04-26 review)
+
+External review of the v_osha_ita_detail / v_osha_ita_summary pipeline turned up
+a cluster of items that are invisible until a real ITA upload fails. Grouped
+here so they get fixed together before first submission. All citations are
+current as of 2026-04-26.
+
+- **Date format — verify ISO vs MM/DD/YYYY against a real ITA upload.** The
+  detail view at `docs/database-design/sql/views/osha_ita.sql:39,46,47,60`
+  emits `incident_date`, `date_of_birth`, `date_hired`, `date_of_death` as
+  raw column values (ISO `YYYY-MM-DD`). OSHA's ITA template historically
+  expects `MM/DD/YYYY`. The supplied template at
+  `osha_300/ita_template_form_300-301_csv_data.csv` is header-only and
+  doesn't disambiguate. Step 1: do a sandbox upload with one ISO row and
+  one MM/DD row to see what their parser accepts in 2026. Step 2: if ISO
+  is rejected, wrap each date column in `strftime('%m/%d/%Y', ...)` in the
+  view. Add a test asserting the chosen format so a future view edit can't
+  silently regress it.
+
+- **Time format — confirm HH:MM (24-hour) and add an export-time guard.**
+  `osha_ita.sql:52-53` passes `time_employee_began_work` and `incident_time`
+  through unchanged. The schema comment at
+  `docs/database-design/sql/module_c_osha300.sql:284` says "HH:MM (24-hour)"
+  but nothing enforces it. Fix: add a CHECK constraint on the incidents
+  table (`incident_time GLOB '[0-2][0-9]:[0-5][0-9]'` or similar), and an
+  assertion in the time-input component that rejects AM/PM and seconds at
+  the form layer. Test should seed a non-empty time value and assert the
+  exact string that comes out the other end.
+
+- **`sex = "X"` may be rejected by the ITA parser.** The fixture at
+  `internal/osha_ita/exporter_test.go:71` seeds an "X" employee and the
+  test at line 181 asserts it round-trips. `osha_ita.sql:48` is a raw
+  `emp.gender AS sex` with no translation. OSHA's ITA enum has historically
+  been `M`/`F`/blank; non-binary support has been on their roadmap but not
+  confirmed landed. Two-step fix: (1) verify against a real upload whether
+  `X` is accepted today; (2) if not, add an `ita_gender_mapping` SKOS-style
+  lookup that translates internal gender codes to ITA-acceptable values
+  (`X` → blank for now, `M`/`F` pass-through), keeping rich gender data
+  inside Odin while exporting only what ITA accepts. Pattern matches the
+  existing `ita_outcome_mapping` / `ita_case_type_mapping` tables.
+
+- **Date of death silently empties for fatalities.** The fatality fixture
+  at `exporter_test.go:101` seeds `severity = "FATALITY"` but no
+  `date_of_death`, and the test never asserts that column. The view emits
+  `incident_outcome = "Death"` with a blank `date_of_death`, which ITA
+  almost certainly rejects. Fix at the form layer: when `severity_code =
+  'FATALITY'` is selected on the IncidentForm, make `date_of_death`
+  required and validate it is on or after `incident_date` (death can occur
+  days after the event, so `COALESCE(date_of_death, incident_date)` in the
+  view would be subtly wrong). Add a CHECK constraint on the incidents
+  table to enforce the same invariant at write time, and update the
+  fatality fixture to seed a real `date_of_death` so the test exercises
+  the populated path. Add a separate test that submitting FATALITY without
+  `date_of_death` is rejected.
+
+- **180-day caps not enforced on `dafw_num_away` / `djtr_num_tr`.** OSHA
+  caps both at 180 days per 1904.7(b)(3)(v) and 1904.7(b)(4)(iii). The
+  view at `osha_ita.sql:43-44` emits raw values; schema comments at
+  `module_c_osha300.sql:309-310` document the cap but nothing enforces
+  it. Per the plan's "business logic in SQL" principle, clamp at the
+  view: `MIN(180, i.days_away_from_work) AS dafw_num_away` and same for
+  `djtr_num_tr`. Also add a CHECK constraint at the table level so bad
+  data can't even be written (`days_away_from_work IS NULL OR
+  days_away_from_work BETWEEN 0 AND 180`). The form should warn (not
+  silently truncate) when a user types > 180 so they understand the cap
+  is being applied. Test with a 200-day fixture and assert the CSV emits
+  180.
+
+- **`type_of_incident` LEFT JOIN can emit empty strings.** `osha_ita.sql:77-80`
+  LEFT JOINs `ita_case_type_mapping` and `ita_incident_types`. A recordable
+  incident whose `case_classification_code` is missing from the mapping
+  table emits an empty `type_of_incident` — the worst failure mode (CSV
+  passes shape checks, ITA rejects on content). Fix: change to INNER JOIN
+  so a missing mapping drops the row from the export and surfaces as a
+  count delta in `Preview`. Add a coverage test in
+  `internal/database/deltas_test.go` (or a new mappings test) that asserts
+  every active `case_classifications.code` has a row in
+  `ita_case_type_mapping`, so the gap is caught at CI time rather than
+  export time.
+
+- **Switch from structural to exact-bytes golden test.** The plan at
+  `docs/plans/2026-04-21-osha-ita-csv-export.md:317-319` locked in
+  exact-bytes golden testing ("ITA template changes trigger a golden
+  refresh — exact-bytes catches regressions a structural assert would
+  silently miss"). The actual tests in `internal/osha_ita/exporter_test.go`
+  do per-column structural asserts. Add a `TestExportDetail_GoldenBytes`
+  and `TestExportSummary_GoldenBytes` that read a committed CSV from
+  `internal/osha_ita/testdata/` and compare bytes. Keep the structural
+  tests for diagnostic specificity when the golden diff fails. Document
+  the regenerate command (`go test -run GoldenBytes -update`).
+
+- **Test gaps around column aliasing and narrative fields.** Current tests
+  in `internal/osha_ita/exporter_test.go` never assert that:
+  (1) the `location_description → incident_location` alias at view line 40
+  round-trips correctly,
+  (2) the four narrative columns read from the right source columns —
+  `nar_before_incident ← activity_description` (line 56),
+  `nar_what_happened ← incident_description` (line 57),
+  `nar_injury_illness ← injury_illness_description` (line 58),
+  `nar_object_substance ← object_or_substance` (line 59).
+  The fixture only seeds `incident_description`, so a future swap of any
+  of these aliases would pass the existing tests. Fix: extend the fixture
+  to seed distinct sentinel strings for all four narrative columns plus
+  `location_description`, then assert each appears in the expected output
+  column. Cheap and high-value — catches the most likely refactor footgun.
+
+- **`treatment_in_patient` collapses NULL → "N" — fine for ITA, plan around
+  it for the printed 300 log.** `osha_ita.sql:50-51` does
+  `CASE WHEN was_hospitalized = 1 THEN 'Y' ELSE 'N' END`, which conflates
+  "we know the employee was not hospitalized" with "we don't know yet."
+  OSHA ITA accepts Y/N only, so this is correct for the ITA export. Not a
+  bug today; flagged here as a constraint to remember when the printable
+  300 log lands — that view should distinguish unknown from known-false,
+  which means the underlying column needs to stay nullable (it currently
+  is) and the 300-log view needs three-state logic (`Y` / `N` / blank) at
+  render time.
 
 - **Sidebar refactor.** The left-nav list has grown past a comfortable read
   as modules have landed — 13 main entries + 4 Clean Water entries + 3

@@ -27,3 +27,4 @@ frontend/dist/
 *.db-wal
 *.db-shm
 .worktrees/
+.gitnexus
