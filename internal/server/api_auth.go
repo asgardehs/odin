@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -350,8 +351,14 @@ func (s *Server) handleDeactivateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Force logout all sessions for this user.
-	s.sessions.DeleteForUser(id)
+	// Force logout all sessions for this user. If revocation fails the
+	// account is flagged inactive but existing sessions still authenticate
+	// — surface as 500 so the admin can retry rather than assume success.
+	if err := s.sessions.DeleteForUser(id); err != nil {
+		log.Printf("deactivate user %d: revoke sessions: %v", id, err)
+		writeError(w, "user deactivated but session revocation failed — existing sessions may still be valid", http.StatusInternalServerError)
+		return
+	}
 
 	writeJSON(w, map[string]string{"status": "ok"})
 }
@@ -461,11 +468,23 @@ func (s *Server) handleRecover(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	// Force reactivation in case the account was deactivated.
-	s.users.Reactivate(user.ID)
+	// Force reactivation in case the account was deactivated. A failure
+	// here means the password is already changed but the account is still
+	// locked — surface as 500 so the operator knows to investigate.
+	if err := s.users.Reactivate(user.ID); err != nil {
+		log.Printf("recover: reactivate user %d: %v", user.ID, err)
+		writeError(w, "password reset but account reactivation failed", http.StatusInternalServerError)
+		return
+	}
 
 	// Invalidate all existing sessions for this user (security measure).
-	s.sessions.DeleteForUser(user.ID)
+	// Failure here leaves stale sessions valid against the new password —
+	// a real security gap, so refuse to issue a fresh token.
+	if err := s.sessions.DeleteForUser(user.ID); err != nil {
+		log.Printf("recover: delete sessions for user %d: %v", user.ID, err)
+		writeError(w, "password reset but session revocation failed — old sessions may still be valid", http.StatusInternalServerError)
+		return
+	}
 
 	// Auto-login with the new credentials.
 	token, err := s.sessions.Create(user.ID, r.RemoteAddr)
