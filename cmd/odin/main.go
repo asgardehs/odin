@@ -38,6 +38,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("data directory: %v", err)
 	}
+	if err := os.MkdirAll(dataDir, 0o700); err != nil {
+		log.Fatalf("data directory: %v", err)
+	}
 
 	// Open EHS database and run schema migrations.
 	sqlFS, err := fs.Sub(odin.SchemaSQL, "docs/database-design/sql")
