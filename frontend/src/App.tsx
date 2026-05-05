@@ -14,6 +14,7 @@ import EstablishmentsHub from './pages/modules/EstablishmentsHub';
 import EmployeeList from './pages/modules/EmployeeList';
 import EmployeeDetail from './pages/modules/EmployeeDetail';
 import EmployeeForm from './pages/modules/EmployeeForm';
+import EmployeesHub from './pages/modules/EmployeesHub';
 import IncidentList from './pages/modules/IncidentList';
 import IncidentDetail from './pages/modules/IncidentDetail';
 import IncidentForm from './pages/modules/IncidentForm';
@@ -94,7 +95,8 @@ function AppRoutes() {
           <Route path="establishments/:id" element={<EstablishmentDetail />} />
           <Route path="establishments/:id/edit" element={<EstablishmentForm />} />
 
-          <Route path="employees" element={<EmployeeList />} />
+          <Route path="employees" element={<EmployeesHub />} />
+          <Route path="employees/full" element={<EmployeeList />} />
           <Route path="employees/new" element={<EmployeeForm />} />
           <Route path="employees/:id" element={<EmployeeDetail />} />
           <Route path="employees/:id/edit" element={<EmployeeForm />} />
