@@ -1,24 +1,10 @@
 import { useNavigate } from 'react-router';
-import { type ColumnDef } from '@tanstack/react-table';
-import { DataTable, type Row } from '../../components/DataTable';
+import { EstablishmentsTable } from '../../components/EstablishmentsTable';
 
-const columns: ColumnDef<Row>[] = [
-  { accessorKey: 'name', header: 'Name' },
-  { accessorKey: 'city', header: 'City' },
-  { accessorKey: 'state', header: 'State' },
-  { accessorKey: 'naics_code', header: 'NAICS Code', cell: ({ getValue }) => String(getValue() ?? '—') },
-  {
-    accessorKey: 'is_active',
-    header: 'Status',
-    cell: ({ getValue }) =>
-      getValue() ? (
-        <span className="text-[var(--color-fn-green)] text-xs font-medium">Active</span>
-      ) : (
-        <span className="text-[var(--color-comment)] text-xs">Inactive</span>
-      ),
-  },
-];
-
+// Standalone fullscreen table view. Mounted at /establishments/full as the
+// Expand target from the Facilities hub. Existing direct links to
+// /establishments now resolve to the hub; deep links from elsewhere in
+// the app still hit the table via /establishments/full.
 export default function EstablishmentList() {
   const navigate = useNavigate();
   return (
@@ -33,11 +19,7 @@ export default function EstablishmentList() {
           + New Facility
         </button>
       </div>
-      <DataTable
-        columns={columns}
-        apiUrl="/api/establishments"
-        onRowClick={(row) => navigate(`/establishments/${row.id}`)}
-      />
+      <EstablishmentsTable />
     </div>
   );
 }

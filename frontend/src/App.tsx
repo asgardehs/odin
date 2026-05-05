@@ -10,6 +10,7 @@ import DevNullPreview from './pages/DevNullPreview';
 import EstablishmentList from './pages/modules/EstablishmentList';
 import EstablishmentDetail from './pages/modules/EstablishmentDetail';
 import EstablishmentForm from './pages/modules/EstablishmentForm';
+import EstablishmentsHub from './pages/modules/EstablishmentsHub';
 import EmployeeList from './pages/modules/EmployeeList';
 import EmployeeDetail from './pages/modules/EmployeeDetail';
 import EmployeeForm from './pages/modules/EmployeeForm';
@@ -87,7 +88,8 @@ function AppRoutes() {
         <Route element={<Shell />}>
           <Route index element={<Dashboard />} />
 
-          <Route path="establishments" element={<EstablishmentList />} />
+          <Route path="establishments" element={<EstablishmentsHub />} />
+          <Route path="establishments/full" element={<EstablishmentList />} />
           <Route path="establishments/new" element={<EstablishmentForm />} />
           <Route path="establishments/:id" element={<EstablishmentDetail />} />
           <Route path="establishments/:id/edit" element={<EstablishmentForm />} />
