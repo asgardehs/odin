@@ -1,4 +1,5 @@
 import { useApi } from '../hooks/useApi';
+import { statusForOpenItems } from '../utils/status';
 
 interface DashboardCounts {
   establishments: number | null;
@@ -10,15 +11,40 @@ interface DashboardCounts {
   expiring_permits: number | null;
 }
 
-const cards: { key: keyof DashboardCounts; label: string; icon: string; color: string; route: string }[] = [
-  { key: 'establishments',   label: 'Facilities',         icon: '🏭', color: 'var(--color-fn-cyan)',   route: '/establishments' },
-  { key: 'employees',        label: 'Active Employees',   icon: '👥', color: 'var(--color-fn-cyan)',   route: '/employees' },
-  { key: 'open_incidents',   label: 'Open Incidents',     icon: '⚠',  color: 'var(--color-fn-red)', route: '/incidents' },
-  { key: 'open_cas',         label: 'Open Actions',       icon: '🔧', color: 'var(--color-fn-orange)',   route: '/incidents' },
-  { key: 'chemicals',        label: 'Active Chemicals',   icon: '🧪', color: 'var(--color-fn-cyan)',   route: '/chemicals' },
-  { key: 'active_permits',   label: 'Active Permits',     icon: '📄', color: 'var(--color-fn-green)',     route: '/permits' },
-  { key: 'expiring_permits', label: 'Permits Expiring',   icon: '⏰', color: 'var(--color-fn-orange)',   route: '/permits' },
+// Cards split into two kinds:
+//   neutral  — "stuff you have" counts; cyan, no threshold meaning
+//   threshold — "open work item" counts; color derives from
+//               statusForOpenItems (0 ok / 1-3 warn / 4+ alert)
+type CardKind = 'neutral' | 'threshold';
+
+const cards: {
+  key: keyof DashboardCounts;
+  label: string;
+  icon: string;
+  route: string;
+  kind: CardKind;
+}[] = [
+  { key: 'establishments',   label: 'Facilities',         icon: '🏭', route: '/establishments', kind: 'neutral' },
+  { key: 'employees',        label: 'Active Employees',   icon: '👥', route: '/employees',      kind: 'neutral' },
+  { key: 'open_incidents',   label: 'Open Incidents',     icon: '⚠',  route: '/incidents',      kind: 'threshold' },
+  { key: 'open_cas',         label: 'Open Actions',       icon: '🔧', route: '/incidents',      kind: 'threshold' },
+  { key: 'chemicals',        label: 'Active Chemicals',   icon: '🧪', route: '/chemicals',      kind: 'neutral' },
+  { key: 'active_permits',   label: 'Active Permits',     icon: '📄', route: '/permits',        kind: 'neutral' },
+  { key: 'expiring_permits', label: 'Permits Expiring',   icon: '⏰', route: '/permits',        kind: 'threshold' },
 ];
+
+const statusColor: Record<'ok' | 'warn' | 'alert', string> = {
+  ok:    'var(--color-fn-green)',
+  warn:  'var(--color-fn-yellow)',
+  alert: 'var(--color-fn-red)',
+};
+
+function colorForCard(kind: CardKind, value: number | null | undefined): string {
+  if (kind === 'neutral') return 'var(--color-fn-cyan)';
+  const s = statusForOpenItems(value);
+  if (s === '') return 'var(--color-fn-cyan)';
+  return statusColor[s];
+}
 
 export default function Dashboard() {
   const { data, loading, error } = useApi<DashboardCounts>('/api/dashboard/counts');
@@ -44,7 +70,7 @@ export default function Dashboard() {
               <span className="text-2xl">{card.icon}</span>
               <span
                 className="text-3xl font-bold tabular-nums"
-                style={{ color: card.color }}
+                style={{ color: colorForCard(card.kind, data?.[card.key]) }}
               >
                 {loading ? (
                   <span className="inline-block w-8 h-8 rounded bg-[var(--color-current-line)] animate-pulse" />
