@@ -24,12 +24,17 @@ func newTestDB(t *testing.T) *database.DB {
 	}
 	t.Cleanup(func() { db.Close() })
 
-	sql, err := os.ReadFile("../../embed/migrations/002_schemabuilder.sql")
-	if err != nil {
-		t.Fatalf("read migration: %v", err)
-	}
-	if err := db.Exec(string(sql)); err != nil {
-		t.Fatalf("apply migration: %v", err)
+	for _, file := range []string{
+		"../../embed/migrations/002_schemabuilder.sql",
+		"../../embed/migrations/004_parent_module.sql",
+	} {
+		sql, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatalf("read migration %s: %v", file, err)
+		}
+		if err := db.Exec(string(sql)); err != nil {
+			t.Fatalf("apply migration %s: %v", file, err)
+		}
 	}
 
 	// Minimal pre-built stubs so relation target validation has real

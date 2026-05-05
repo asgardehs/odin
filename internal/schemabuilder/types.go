@@ -103,10 +103,22 @@ func IsAllowedRelationTarget(target string) bool {
 
 // CustomTableInput is the payload for creating a new custom table.
 type CustomTableInput struct {
-	Name        string  `json:"name"`
-	DisplayName string  `json:"display_name"`
-	Description *string `json:"description,omitempty"`
-	Icon        *string `json:"icon,omitempty"`
+	Name         string  `json:"name"`
+	DisplayName  string  `json:"display_name"`
+	Description  *string `json:"description,omitempty"`
+	Icon         *string `json:"icon,omitempty"`
+	ParentModule *string `json:"parent_module,omitempty"`
+}
+
+// ValidParentModules is the closed enum for CustomTable.ParentModule.
+// Mirrored at the DB level by a CHECK constraint on _custom_tables.
+var ValidParentModules = []string{"none", "facilities", "employees", "inspections"}
+
+// IsValidParentModule reports whether v is one of the allowed values.
+// Empty strings are NOT valid — callers should default to "none" before
+// calling.
+func IsValidParentModule(v string) bool {
+	return slices.Contains(ValidParentModules, v)
 }
 
 // CustomFieldInput is the payload for adding a field to a custom table.
@@ -143,6 +155,7 @@ type CustomTable struct {
 	Icon         *string          `json:"icon,omitempty"`
 	DisplayOrder int              `json:"display_order"`
 	IsActive     bool             `json:"is_active"`
+	ParentModule string           `json:"parent_module"`
 	CreatedAt    string           `json:"created_at"`
 	UpdatedAt    string           `json:"updated_at"`
 	Fields       []CustomField    `json:"fields"`

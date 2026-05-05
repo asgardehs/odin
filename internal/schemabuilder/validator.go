@@ -44,6 +44,10 @@ func (v *Validator) ValidateTableInput(in CustomTableInput) error {
 		return fmt.Errorf("display_name is required")
 	}
 
+	if in.ParentModule != nil && !IsValidParentModule(*in.ParentModule) {
+		return fmt.Errorf("parent_module must be one of: none, facilities, employees, inspections")
+	}
+
 	physical := TablePrefix + name
 	exists, err := tableExists(v.DB, physical)
 	if err != nil {

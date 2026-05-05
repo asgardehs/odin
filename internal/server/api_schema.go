@@ -27,6 +27,7 @@ func (s *Server) schemaRoutes() {
 	s.mux.HandleFunc("GET    /api/schema/tables/{id}", s.handleSchemaGetTable)
 	s.mux.HandleFunc("POST   /api/schema/tables/{id}/deactivate", s.handleSchemaDeactivateTable)
 	s.mux.HandleFunc("POST   /api/schema/tables/{id}/reactivate", s.handleSchemaReactivateTable)
+	s.mux.HandleFunc("POST   /api/schema/tables/{id}/parent-module", s.handleSchemaSetParentModule)
 	s.mux.HandleFunc("POST   /api/schema/tables/{id}/fields", s.handleSchemaAddField)
 	s.mux.HandleFunc("POST   /api/schema/tables/{id}/fields/{fid}/deactivate", s.handleSchemaDeactivateField)
 	s.mux.HandleFunc("POST   /api/schema/tables/{id}/relations", s.handleSchemaAddRelation)
@@ -36,6 +37,7 @@ func (s *Server) schemaRoutes() {
 
 	// -- Record CRUD (any authed user) --
 	s.mux.HandleFunc("GET    /api/records/{slug}", s.handleRecordList)
+	s.mux.HandleFunc("GET    /api/records/{slug}/summary", s.handleRecordSummary)
 	s.mux.HandleFunc("GET    /api/records/{slug}/_schema", s.handleRecordSchema)
 	s.mux.HandleFunc("GET    /api/records/{slug}/{id}", s.handleRecordGet)
 	s.mux.HandleFunc("POST   /api/records/{slug}", s.handleRecordCreate)
@@ -91,7 +93,8 @@ func (s *Server) handleSchemaListTables(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	activeOnly := r.URL.Query().Get("active") == "1"
-	tables, err := s.schemaExec.ListTables(activeOnly)
+	parentModule := r.URL.Query().Get("parent_module")
+	tables, err := s.schemaExec.ListTables(activeOnly, parentModule)
 	if err != nil {
 		writeError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -137,6 +140,33 @@ func (s *Server) handleSchemaDeactivateTable(w http.ResponseWriter, r *http.Requ
 	}
 	s.recordSchemaAudit(admin.Username, audit.ActionUpdate, id,
 		fmt.Sprintf("Deactivated custom table %d", id), nil)
+	writeJSON(w, map[string]string{"status": "ok"})
+}
+
+func (s *Server) handleSchemaSetParentModule(w http.ResponseWriter, r *http.Request) {
+	admin := s.requireAdmin(w, r)
+	if admin == nil {
+		return
+	}
+	id, err := parseID(r)
+	if err != nil {
+		writeError(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	var body struct {
+		ParentModule string `json:"parent_module"`
+	}
+	if err := readJSON(w, r, &body); err != nil {
+		writeBodyError(w, err)
+		return
+	}
+	if err := s.schemaExec.SetParentModule(admin.Username, id, body.ParentModule); err != nil {
+		writeError(w, err.Error(), schemaErrorStatus(err))
+		return
+	}
+	s.recordSchemaAudit(admin.Username, audit.ActionUpdate, id,
+		fmt.Sprintf("Set parent_module=%q on custom table %d", body.ParentModule, id),
+		mustJSON(body))
 	writeJSON(w, map[string]string{"status": "ok"})
 }
 
@@ -416,6 +446,46 @@ func (s *Server) handleRecordList(w http.ResponseWriter, r *http.Request) {
 		"page":        page,
 		"per_page":    perPage,
 		"total_pages": totalPages,
+	})
+}
+
+// handleRecordSummary returns a Summary{primary: row count, empty:
+// count==0} for a custom table — the contract Phase 8 hubs need to
+// render custom-table KPI cards. Honors ?facility_id=X via the
+// auto-added establishment_id column on every cx_ table.
+func (s *Server) handleRecordSummary(w http.ResponseWriter, r *http.Request) {
+	user := s.requireAuth(w, r)
+	if user == nil {
+		return
+	}
+	tbl, ok := s.resolveActiveSlug(w, r)
+	if !ok {
+		return
+	}
+
+	opts := schemabuilder.SelectOpts{}
+	if v := r.URL.Query().Get("facility_id"); v != "" {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n > 0 {
+			opts.EstablishmentID = &n
+		}
+	}
+	countSQL, countArgs, err := s.schemaQB.Count(tbl.ID, opts)
+	if err != nil {
+		writeError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	val, err := s.db.QueryVal(countSQL, countArgs...)
+	if err != nil {
+		writeError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	count, _ := val.(int64)
+	if count == 0 {
+		writeJSON(w, Summary{Empty: true})
+		return
+	}
+	writeJSON(w, Summary{
+		Primary: &SummaryMetric{Label: "records", Value: count},
 	})
 }
 

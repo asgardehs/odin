@@ -40,10 +40,14 @@ func (e *Executor) CreateTable(user string, in CustomTableInput) (int64, error) 
 
 	var newID int64
 	err := e.withSavepoint("create_table", func() error {
+		parentModule := "none"
+		if in.ParentModule != nil {
+			parentModule = *in.ParentModule
+		}
 		if err := e.DB.ExecParams(
-			`INSERT INTO _custom_tables (name, display_name, description, icon)
-			 VALUES (?, ?, ?, ?)`,
-			in.Name, in.DisplayName, in.Description, in.Icon,
+			`INSERT INTO _custom_tables (name, display_name, description, icon, parent_module)
+			 VALUES (?, ?, ?, ?, ?)`,
+			in.Name, in.DisplayName, in.Description, in.Icon, parentModule,
 		); err != nil {
 			return fmt.Errorf("insert metadata: %w", err)
 		}
@@ -329,18 +333,28 @@ func (e *Executor) LoadTable(tableID int64) (*CustomTable, error) {
 	return e.loadTable(tableID)
 }
 
-// ListTables returns all custom tables. If activeOnly is true, only
-// active tables are returned. Fields and relations are NOT populated
-// — call LoadTable for a full detail view.
-func (e *Executor) ListTables(activeOnly bool) ([]CustomTable, error) {
+// ListTables returns all custom tables. activeOnly hides deactivated
+// rows; parentModule, when non-empty, narrows to a specific hub
+// (use "none" for top-level / sidebar entries). Fields and relations
+// are NOT populated — call LoadTable for a full detail view.
+func (e *Executor) ListTables(activeOnly bool, parentModule string) ([]CustomTable, error) {
 	q := `SELECT id, name, display_name, description, icon,
-	             display_order, is_active, created_at, updated_at
+	             display_order, is_active, parent_module, created_at, updated_at
 	      FROM _custom_tables`
+	var args []any
+	conds := []string{}
 	if activeOnly {
-		q += ` WHERE is_active = 1`
+		conds = append(conds, "is_active = 1")
+	}
+	if parentModule != "" {
+		conds = append(conds, "parent_module = ?")
+		args = append(args, parentModule)
+	}
+	if len(conds) > 0 {
+		q += " WHERE " + strings.Join(conds, " AND ")
 	}
 	q += ` ORDER BY display_order, display_name`
-	rows, err := e.DB.QueryRows(q)
+	rows, err := e.DB.QueryRows(q, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -349,6 +363,26 @@ func (e *Executor) ListTables(activeOnly bool) ([]CustomTable, error) {
 		out = append(out, tableFromRow(r))
 	}
 	return out, nil
+}
+
+// SetParentModule updates which hub a custom table appears on. Records
+// a version entry. Used by the admin UI when an existing table needs
+// to be re-homed (a table created before parent_module shipped, or one
+// the user wants to move).
+func (e *Executor) SetParentModule(user string, tableID int64, parentModule string) error {
+	if !IsValidParentModule(parentModule) {
+		return fmt.Errorf("parent_module must be one of: none, facilities, employees, inspections")
+	}
+	return e.withSavepoint("set_parent_module", func() error {
+		if err := e.DB.ExecParams(
+			`UPDATE _custom_tables SET parent_module = ?, updated_at = datetime('now')
+			 WHERE id = ?`, parentModule, tableID,
+		); err != nil {
+			return err
+		}
+		payload, _ := json.Marshal(map[string]any{"parent_module": parentModule})
+		return e.recordVersion(tableID, "set_parent_module", payload, user)
+	})
 }
 
 // ListVersions returns the DDL history for a single custom table,
@@ -382,7 +416,7 @@ func (e *Executor) ListVersions(tableID int64) ([]TableVersion, error) {
 func (e *Executor) loadTable(tableID int64) (*CustomTable, error) {
 	row, err := e.DB.QueryRow(
 		`SELECT id, name, display_name, description, icon,
-		        display_order, is_active, created_at, updated_at
+		        display_order, is_active, parent_module, created_at, updated_at
 		 FROM _custom_tables WHERE id = ?`, tableID,
 	)
 	if err != nil {
@@ -522,6 +556,7 @@ func tableFromRow(r database.Row) CustomTable {
 		Icon:         asOptString(r["icon"]),
 		DisplayOrder: int(asInt64(r["display_order"])),
 		IsActive:     asInt64(r["is_active"]) == 1,
+		ParentModule: asString(r["parent_module"]),
 		CreatedAt:    asString(r["created_at"]),
 		UpdatedAt:    asString(r["updated_at"]),
 	}
