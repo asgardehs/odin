@@ -40,11 +40,12 @@ func (s *Server) registerSummaryRoutes() {
 
 	// Top-level Dashboard + Facilities hub
 	s.mux.HandleFunc("GET /api/permits/summary", s.handlePermitsSummary)
-	s.mux.HandleFunc("GET /api/emission-units/summary", s.summaryStub("air_emission_units"))
-	s.mux.HandleFunc("GET /api/waste-streams/summary", s.summaryStub("waste_streams"))
-	s.mux.HandleFunc("GET /api/chemicals/summary", s.summaryStub("chemicals"))
-	s.mux.HandleFunc("GET /api/storage-locations/summary", s.summaryStub("storage_locations"))
-	s.mux.HandleFunc("GET /api/discharge-points/summary", s.summaryStub("discharge_points"))
+	s.mux.HandleFunc("GET /api/permits/npdes/summary", s.handleNPDESPermitsSummary)
+	s.mux.HandleFunc("GET /api/emission-units/summary", s.handleEmissionUnitsSummary)
+	s.mux.HandleFunc("GET /api/waste-streams/summary", s.handleWasteStreamsSummary)
+	s.mux.HandleFunc("GET /api/chemicals/summary", s.handleChemicalsSummary)
+	s.mux.HandleFunc("GET /api/storage-locations/summary", s.handleStorageLocationsSummary)
+	s.mux.HandleFunc("GET /api/discharge-points/summary", s.handleDischargePointsSummary)
 
 	// Employees hub
 	s.mux.HandleFunc("GET /api/training/summary", s.handleTrainingSummary)
@@ -112,6 +113,135 @@ func statusForOpenItems(count int64) string {
 	default:
 		return "alert"
 	}
+}
+
+// handleNPDESPermitsSummary mirrors handlePermitsSummary's expiry buckets
+// but filters to NPDES permit types only (Clean Water Act §402). The
+// Facilities hub renders this as a sibling card to general Permits so
+// CWA posture has its own glance signal.
+func (s *Server) handleNPDESPermitsSummary(w http.ResponseWriter, r *http.Request) {
+	where, args := facilityFilter(r, "p.establishment_id")
+	row, err := s.db.QueryRow(`
+		SELECT
+		  CAST(COALESCE(SUM(CASE WHEN p.expiration_date IS NOT NULL
+		         AND p.expiration_date >= date('now')
+		         AND p.expiration_date <= date('now', '+30 days') THEN 1 ELSE 0 END), 0) AS INTEGER) AS bucket_30,
+		  CAST(COALESCE(SUM(CASE WHEN p.expiration_date IS NOT NULL
+		         AND p.expiration_date >  date('now', '+30 days')
+		         AND p.expiration_date <= date('now', '+60 days') THEN 1 ELSE 0 END), 0) AS INTEGER) AS bucket_60,
+		  COUNT(*) AS active_total
+		FROM permits p
+		JOIN permit_types pt ON p.permit_type_id = pt.id
+		WHERE p.status = 'active'
+		  AND pt.type_code LIKE 'NPDES_%'`+where, args...)
+	if err != nil {
+		writeError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	total, _ := row["active_total"].(int64)
+	if total == 0 {
+		writeJSON(w, Summary{Empty: true})
+		return
+	}
+	bucket30, _ := row["bucket_30"].(int64)
+	bucket60, _ := row["bucket_60"].(int64)
+	writeJSON(w, Summary{
+		Primary:   &SummaryMetric{Label: "expiring ≤30 days", Value: bucket30},
+		Secondary: &SummaryMetric{Label: "in 31-60 days", Value: bucket60},
+		Status:    statusForOpenItems(bucket30),
+	})
+}
+
+// inventorySummary builds the standard "active count + secondary subset"
+// aggregate used by the Facilities hub's inventory cards (chemicals,
+// storage locations, etc.). table, secondaryLabel, and secondaryWhere are
+// hard-coded literals at every call site (never user input), so
+// concatenation into the query is safe. Returns Empty=true only when
+// the table has no rows in scope at all.
+//
+// secondaryWhere is the SQL fragment defining the secondary subset
+// relative to the active rows (e.g. "AND is_ehs = 1"). Pass "" for cards
+// where no secondary makes sense.
+func (s *Server) inventorySummary(
+	w http.ResponseWriter,
+	r *http.Request,
+	table, primaryLabel, secondaryLabel, secondaryWhere string,
+) {
+	where, args := facilityFilter(r, "establishment_id")
+	q := `
+		SELECT
+		  CAST(COALESCE(SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END), 0) AS INTEGER) AS active,
+		  CAST(COALESCE(SUM(CASE WHEN is_active = 1 ` + secondaryWhere + ` THEN 1 ELSE 0 END), 0) AS INTEGER) AS secondary,
+		  COUNT(*) AS total
+		FROM ` + table + `
+		WHERE 1=1` + where
+	row, err := s.db.QueryRow(q, args...)
+	if err != nil {
+		writeError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	total, _ := row["total"].(int64)
+	if total == 0 {
+		writeJSON(w, Summary{Empty: true})
+		return
+	}
+	active, _ := row["active"].(int64)
+	out := Summary{
+		Primary: &SummaryMetric{Label: primaryLabel, Value: active},
+	}
+	if secondaryWhere != "" && secondaryLabel != "" {
+		secondary, _ := row["secondary"].(int64)
+		out.Secondary = &SummaryMetric{Label: secondaryLabel, Value: secondary}
+	}
+	writeJSON(w, out)
+}
+
+func (s *Server) handleChemicalsSummary(w http.ResponseWriter, r *http.Request) {
+	s.inventorySummary(w, r, "chemicals", "active", "EHS-listed", "AND is_ehs = 1")
+}
+
+func (s *Server) handleWasteStreamsSummary(w http.ResponseWriter, r *http.Request) {
+	s.inventorySummary(w, r, "waste_streams", "active streams", "hazardous", "AND waste_category = 'hazardous'")
+}
+
+func (s *Server) handleStorageLocationsSummary(w http.ResponseWriter, r *http.Request) {
+	s.inventorySummary(w, r, "storage_locations", "active", "indoor", "AND is_indoor = 1")
+}
+
+func (s *Server) handleEmissionUnitsSummary(w http.ResponseWriter, r *http.Request) {
+	s.inventorySummary(w, r, "air_emission_units", "active", "fugitive sources", "AND is_fugitive = 1")
+}
+
+// handleDischargePointsSummary doesn't follow the inventorySummary
+// pattern — discharge_points has no is_active column, just status, and
+// the "impaired waters" flag is the most operationally interesting
+// secondary (CWA §303(d) listing drives extra monitoring / TMDL
+// compliance).
+func (s *Server) handleDischargePointsSummary(w http.ResponseWriter, r *http.Request) {
+	where, args := facilityFilter(r, "establishment_id")
+	row, err := s.db.QueryRow(`
+		SELECT
+		  CAST(COALESCE(SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END), 0) AS INTEGER) AS active,
+		  CAST(COALESCE(SUM(CASE WHEN status = 'active'
+		         AND is_impaired_water = 1 THEN 1 ELSE 0 END), 0) AS INTEGER) AS impaired,
+		  COUNT(*) AS total
+		FROM discharge_points
+		WHERE 1=1`+where, args...)
+	if err != nil {
+		writeError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	total, _ := row["total"].(int64)
+	if total == 0 {
+		writeJSON(w, Summary{Empty: true})
+		return
+	}
+	active, _ := row["active"].(int64)
+	impaired, _ := row["impaired"].(int64)
+	writeJSON(w, Summary{
+		Primary:   &SummaryMetric{Label: "active outfalls", Value: active},
+		Secondary: &SummaryMetric{Label: "to impaired waters", Value: impaired},
+	})
 }
 
 // handleTrainingSummary aggregates expiring-training counts for the

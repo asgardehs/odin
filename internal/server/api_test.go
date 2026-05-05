@@ -697,6 +697,147 @@ func TestOSHA300Summary(t *testing.T) {
 	}
 }
 
+func TestNPDESPermitsSummary(t *testing.T) {
+	tc := newTestServerWithDB(t)
+
+	resp := fetchSummary(t, tc, "/api/permits/npdes/summary")
+	if empty, _ := resp["empty"].(bool); !empty {
+		t.Errorf("empty case: empty = %v, want true", resp["empty"])
+	}
+
+	// permit_types are seeded by the schema migration. Look up an NPDES id
+	// and a non-NPDES id so the test isn't tied to fragile literal IDs.
+	npdesIDVal, err := tc.srv.db.QueryVal(
+		`SELECT id FROM permit_types WHERE type_code LIKE 'NPDES_%' LIMIT 1`)
+	if err != nil || npdesIDVal == nil {
+		t.Fatalf("lookup NPDES permit_type: %v", err)
+	}
+	npdesID := npdesIDVal.(int64)
+	titleVIDVal, err := tc.srv.db.QueryVal(
+		`SELECT id FROM permit_types WHERE type_code = 'TITLE_V' LIMIT 1`)
+	if err != nil || titleVIDVal == nil {
+		t.Fatalf("lookup TITLE_V permit_type: %v", err)
+	}
+	titleVID := titleVIDVal.(int64)
+
+	insert := func(typeID int64, num string, daysOut int, status string) {
+		t.Helper()
+		expr := "date('now', '+" + strconv.Itoa(daysOut) + " days')"
+		sql := `INSERT INTO permits
+		    (establishment_id, permit_type_id, permit_number, status, expiration_date)
+		    VALUES (1, ?, ?, ?, ` + expr + `)`
+		if err := tc.srv.db.ExecParams(sql, typeID, num, status); err != nil {
+			t.Fatalf("insert permit %s: %v", num, err)
+		}
+	}
+	insert(npdesID, "N-30", 15, "active")  // NPDES, ≤30d
+	insert(npdesID, "N-60", 50, "active")  // NPDES, 31-60d
+	insert(titleVID, "T-30", 15, "active") // not NPDES — must be excluded
+
+	resp = fetchSummary(t, tc, "/api/permits/npdes/summary")
+	if got := summaryValue(t, resp, "primary"); got != 1 {
+		t.Errorf("primary = %d, want 1 (NPDES only, Title V excluded)", got)
+	}
+	if got := summaryValue(t, resp, "secondary"); got != 1 {
+		t.Errorf("secondary = %d, want 1", got)
+	}
+}
+
+func TestInventorySummaries(t *testing.T) {
+	tc := newTestServerWithDB(t)
+
+	// Seed a second facility for the filter check.
+	if err := tc.srv.db.ExecParams(
+		`INSERT INTO establishments (id, name, street_address, city, state, zip, naics_code)
+		 VALUES (2, 'F2', '1', 'C', 'I', '62701', '325199')`,
+	); err != nil {
+		t.Fatalf("seed est 2: %v", err)
+	}
+
+	// chemicals: 3 active+EHS (fac1), 1 active non-EHS (fac1), 1 inactive (fac1), 1 active (fac2).
+	if err := tc.srv.db.ExecParams(`
+		INSERT INTO chemicals (establishment_id, primary_cas_number, product_name, is_active, is_ehs)
+		VALUES (1,'1','C1',1,1),(1,'2','C2',1,1),(1,'3','C3',1,1),(1,'4','C4',1,0),
+		       (1,'5','C5',0,1),(2,'6','C6',1,0)
+	`); err != nil {
+		t.Fatalf("seed chemicals: %v", err)
+	}
+
+	resp := fetchSummary(t, tc, "/api/chemicals/summary")
+	if got := summaryValue(t, resp, "primary"); got != 5 {
+		t.Errorf("chemicals org-wide primary = %d, want 5", got)
+	}
+	if got := summaryValue(t, resp, "secondary"); got != 3 {
+		t.Errorf("chemicals org-wide EHS = %d, want 3", got)
+	}
+	resp = fetchSummary(t, tc, "/api/chemicals/summary?facility_id=2")
+	if got := summaryValue(t, resp, "primary"); got != 1 {
+		t.Errorf("chemicals fac2 primary = %d, want 1", got)
+	}
+
+	// waste_streams: 2 hazardous active (fac1), 1 universal active (fac1).
+	if err := tc.srv.db.ExecParams(`
+		INSERT INTO waste_streams (establishment_id, stream_code, stream_name, waste_category, is_active)
+		VALUES (1,'W1','S1','hazardous',1),(1,'W2','S2','hazardous',1),(1,'W3','S3','universal',1)
+	`); err != nil {
+		t.Fatalf("seed waste: %v", err)
+	}
+	resp = fetchSummary(t, tc, "/api/waste-streams/summary")
+	if got := summaryValue(t, resp, "primary"); got != 3 {
+		t.Errorf("waste primary = %d, want 3", got)
+	}
+	if got := summaryValue(t, resp, "secondary"); got != 2 {
+		t.Errorf("waste hazardous = %d, want 2", got)
+	}
+
+	// storage_locations: 2 indoor active (fac1), 1 outdoor active (fac1).
+	if err := tc.srv.db.ExecParams(`
+		INSERT INTO storage_locations (establishment_id, building, is_indoor, is_active)
+		VALUES (1,'B1',1,1),(1,'B2',1,1),(1,'B3',0,1)
+	`); err != nil {
+		t.Fatalf("seed storage: %v", err)
+	}
+	resp = fetchSummary(t, tc, "/api/storage-locations/summary")
+	if got := summaryValue(t, resp, "primary"); got != 3 {
+		t.Errorf("storage primary = %d, want 3", got)
+	}
+	if got := summaryValue(t, resp, "secondary"); got != 2 {
+		t.Errorf("storage indoor = %d, want 2", got)
+	}
+
+	// air_emission_units: 2 active stack, 1 active fugitive (fac1).
+	if err := tc.srv.db.ExecParams(`
+		INSERT INTO air_emission_units (establishment_id, unit_name, source_category, is_fugitive, is_active)
+		VALUES (1,'U1','combustion',0,1),(1,'U2','combustion',0,1),(1,'U3','process',1,1)
+	`); err != nil {
+		t.Fatalf("seed emission units: %v", err)
+	}
+	resp = fetchSummary(t, tc, "/api/emission-units/summary")
+	if got := summaryValue(t, resp, "primary"); got != 3 {
+		t.Errorf("emission units primary = %d, want 3", got)
+	}
+	if got := summaryValue(t, resp, "secondary"); got != 1 {
+		t.Errorf("emission units fugitive = %d, want 1", got)
+	}
+
+	// discharge_points: 2 active (1 to impaired), 1 inactive.
+	if err := tc.srv.db.ExecParams(`
+		INSERT INTO discharge_points (establishment_id, outfall_code, discharge_type, is_impaired_water, status)
+		VALUES (1,'O1','process_wastewater',1,'active'),
+		       (1,'O2','stormwater',0,'active'),
+		       (1,'O3','sanitary',0,'inactive')
+	`); err != nil {
+		t.Fatalf("seed outfalls: %v", err)
+	}
+	resp = fetchSummary(t, tc, "/api/discharge-points/summary")
+	if got := summaryValue(t, resp, "primary"); got != 2 {
+		t.Errorf("discharge primary = %d, want 2 (active only)", got)
+	}
+	if got := summaryValue(t, resp, "secondary"); got != 1 {
+		t.Errorf("discharge impaired = %d, want 1", got)
+	}
+}
+
 // TestDashboardCounts verifies the dashboard endpoint returns counts.
 func TestDashboardCounts(t *testing.T) {
 	tc := newTestServerWithDB(t)
