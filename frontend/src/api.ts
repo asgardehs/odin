@@ -71,6 +71,15 @@ export const api = {
     return res.json();
   },
 
+  async patch<T>(url: string, body: unknown): Promise<T> {
+    const res = await apiFetch(url, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new ApiError(res.status, await errorBody(res));
+    return res.json();
+  },
+
   async del(url: string): Promise<void> {
     const res = await apiFetch(url, { method: 'DELETE' });
     if (!res.ok) throw new ApiError(res.status, await errorBody(res));

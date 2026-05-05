@@ -2,56 +2,37 @@ import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { useCustomTablesList } from '../hooks/useCustomTablesList';
+import FacilitySelector from './FacilitySelector';
 import logo from '../assets/OdinEHSlogo_256.png';
 
 const navItems = [
-  { to: '/',              label: 'Dashboard',    icon: '⬡' },
-  { to: '/establishments', label: 'Facilities',   icon: '🏭' },
-  { to: '/employees',     label: 'Employees',    icon: '👥' },
-  { to: '/incidents',     label: 'Incidents',    icon: '⚠' },
-  { to: '/chemicals',     label: 'Chemicals',    icon: '🧪' },
-  { to: '/training',      label: 'Training',     icon: '📋' },
-  { to: '/inspections',   label: 'Inspections',  icon: '🔍' },
-  { to: '/audits',        label: 'Audits',       icon: '📝' },
-  { to: '/permits',       label: 'Permits',      icon: '📄' },
-  { to: '/emission-units', label: 'Emissions',   icon: '💨' },
-  { to: '/waste',         label: 'Waste',        icon: '♻' },
-  { to: '/ppe',           label: 'PPE',          icon: '🦺' },
-  { to: '/storage-locations', label: 'Storage',  icon: '📦' },
+  { to: '/',              label: 'Dashboard',          icon: '⬡' },
+  { to: '/establishments', label: 'Facilities',        icon: '🏭' },
+  { to: '/employees',     label: 'Employees',          icon: '👥' },
+  { to: '/inspections',   label: 'Inspections',        icon: '🔍' },
+  { to: '/documents',     label: 'SDS and Documents',  icon: '📚' },
 ];
 
-// Module D — Clean Water Act. Rendered as its own labeled section so the
-// four entries stay grouped together semantically.
-const cleanWaterNavItems = [
-  { to: '/permits/npdes',    label: 'NPDES Permits',  icon: '📄' },
-  { to: '/discharge-points', label: 'Outfalls',       icon: '🌊' },
-  { to: '/ww-sample-events', label: 'Sample Events',  icon: '🧫' },
-  { to: '/swpps',            label: 'SWPPPs',         icon: '📘' },
-];
-
-const adminNavItems = [
-  { to: '/admin/users',  label: 'Users',    icon: '🔐' },
-  { to: '/admin/schema', label: 'Schema',   icon: '🧱' },
-  { to: '/admin/import', label: 'Import',   icon: '📥' },
-  { to: '/osha-ita',     label: 'OSHA ITA', icon: '📤' },
-];
+const adminNavItem = { to: '/admin', label: 'Admin', icon: '🔧' };
 
 export default function Shell() {
   const { user, readonly, logout } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // Custom tables group — only fetched for admins; the endpoint is
-  // admin-only and non-admin users simply see no group rendered.
+  // Custom tables — still rendered as a flat list at the bottom of the
+  // sidebar until Phase 8 routes them into their parent hubs.
   const customTables = useCustomTablesList(user?.role === 'admin');
   const sortedCustomTables = [...customTables].sort((a, b) =>
     a.display_name.localeCompare(b.display_name),
   );
 
+  const isAdmin = user?.role === 'admin';
+
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
-      <nav className={`flex flex-col ${sidebarOpen ? 'w-48' : 'w-16'} transition-all duration-200 bg-[var(--color-bg-dark)] border-r border-[var(--color-current-line)] overflow-hidden`}>
+      <nav className={`flex flex-col ${sidebarOpen ? 'w-56' : 'w-16'} transition-all duration-200 bg-[var(--color-bg-dark)] border-r border-[var(--color-current-line)] overflow-hidden`}>
         {/* Sidebar toggle */}
         <div className="flex items-center justify-center h-14 border-b border-[var(--color-current-line)]">
           <button
@@ -64,6 +45,11 @@ export default function Shell() {
               <line x1="1" y1="13" x2="17" y2="13" />
             </svg>
           </button>
+        </div>
+
+        {/* Facility selector — global current scope */}
+        <div className="border-b border-[var(--color-current-line)]">
+          <FacilitySelector collapsed={!sidebarOpen} />
         </div>
 
         {/* Nav items */}
@@ -86,19 +72,10 @@ export default function Shell() {
             </NavLink>
           ))}
 
-          {/* Clean Water (Module D) group — NPDES permits as a filter view,
-              plus Module D-distinctive entries (outfalls, sample events,
-              SWPPPs). */}
-          <div className="mt-2 mb-1 px-4 h-px bg-[var(--color-current-line)]" />
-          {sidebarOpen && (
-            <div className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-[var(--color-comment)]">
-              💧 Clean Water
-            </div>
-          )}
-          {cleanWaterNavItems.map(item => (
+          {isAdmin && (
             <NavLink
-              key={item.to}
-              to={item.to}
+              key={adminNavItem.to}
+              to={adminNavItem.to}
               className={({ isActive }) =>
                 `flex items-center h-10 px-4 gap-3 text-sm transition-colors whitespace-nowrap ${
                   isActive
@@ -107,14 +84,12 @@ export default function Shell() {
                 }`
               }
             >
-              <span className="text-base w-5 text-center shrink-0">{item.icon}</span>
-              {sidebarOpen && <span>{item.label}</span>}
+              <span className="text-base w-5 text-center shrink-0">{adminNavItem.icon}</span>
+              {sidebarOpen && <span>{adminNavItem.label}</span>}
             </NavLink>
-          ))}
+          )}
 
-          {/* Custom Tables group — visible to admins once ≥1 active
-              custom table exists. Refreshes on odin:schema-changed. */}
-          {user?.role === 'admin' && sortedCustomTables.length > 0 && (
+          {isAdmin && sortedCustomTables.length > 0 && (
             <>
               <div className="mt-2 mb-1 px-4 h-px bg-[var(--color-current-line)]" />
               {sidebarOpen && (
@@ -137,28 +112,6 @@ export default function Shell() {
                 >
                   <span className="text-base w-5 text-center shrink-0">{t.icon ?? '🧱'}</span>
                   {sidebarOpen && <span className="truncate">{t.display_name}</span>}
-                </NavLink>
-              ))}
-            </>
-          )}
-
-          {user?.role === 'admin' && (
-            <>
-              <div className="mt-2 mb-1 px-4 h-px bg-[var(--color-current-line)]" />
-              {adminNavItems.map(item => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={({ isActive }) =>
-                    `flex items-center h-10 px-4 gap-3 text-sm transition-colors whitespace-nowrap ${
-                      isActive
-                        ? 'text-[var(--color-purple)] bg-[var(--color-bg-lighter)] border-r-2 border-[var(--color-fn-purple)]'
-                        : 'text-[var(--color-fg)] hover:text-[var(--color-fg)] hover:bg-[var(--color-bg-lighter)]'
-                    }`
-                  }
-                >
-                  <span className="text-base w-5 text-center shrink-0">{item.icon}</span>
-                  {sidebarOpen && <span>{item.label}</span>}
                 </NavLink>
               ))}
             </>

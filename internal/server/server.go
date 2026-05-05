@@ -118,6 +118,10 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /api/auth/setup", s.handleSetup)
 	s.mux.HandleFunc("GET /api/auth/me", s.handleMe)
 
+	// Per-user preferences (selected facility, etc.).
+	s.mux.HandleFunc("GET /api/me/preferences", s.handleGetPreferences)
+	s.mux.HandleFunc("PATCH /api/me/preferences", s.handlePatchPreferences)
+
 	// Self-service password reset via security questions.
 	s.mux.HandleFunc("POST /api/auth/security-questions", s.handleSetSecurityQuestions)
 	s.mux.HandleFunc("GET /api/auth/security-questions/{username}", s.handleGetSecurityQuestions)
