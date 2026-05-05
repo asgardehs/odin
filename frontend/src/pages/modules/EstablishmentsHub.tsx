@@ -3,6 +3,7 @@ import { useApi } from '../../hooks/useApi';
 import { useFacility } from '../../context/FacilityContext';
 import { HubLayout } from '../../components/HubLayout';
 import { KPICard, type Summary } from '../../components/KPICard';
+import { CustomCardsForHub } from '../../components/CustomCardsForHub';
 import { EstablishmentsTable } from '../../components/EstablishmentsTable';
 
 // ScopedKPICard mirrors the helper in Dashboard — fetch one summary
@@ -55,15 +56,20 @@ export default function EstablishmentsHub() {
     <HubLayout
       title="Facilities"
       subtitle={subtitle}
-      kpis={cards.map(c => (
-        <ScopedKPICard
-          key={c.module}
-          url={`/api/${c.module}/summary${scope}`}
-          title={c.title}
-          href={c.href}
-          icon={c.icon}
-        />
-      ))}
+      kpis={
+        <>
+          {cards.map(c => (
+            <ScopedKPICard
+              key={c.module}
+              url={`/api/${c.module}/summary${scope}`}
+              title={c.title}
+              href={c.href}
+              icon={c.icon}
+            />
+          ))}
+          <CustomCardsForHub parentModule="facilities" scope={scope} />
+        </>
+      }
       table={<EstablishmentsTable />}
       expandHref="/establishments/full"
     />

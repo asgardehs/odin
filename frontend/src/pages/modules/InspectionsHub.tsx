@@ -3,6 +3,7 @@ import { useApi } from '../../hooks/useApi';
 import { useFacility } from '../../context/FacilityContext';
 import { HubLayout } from '../../components/HubLayout';
 import { KPICard, type Summary } from '../../components/KPICard';
+import { CustomCardsForHub } from '../../components/CustomCardsForHub';
 import { InspectionsTable } from '../../components/InspectionsTable';
 
 function ScopedKPICard({
@@ -46,15 +47,20 @@ export default function InspectionsHub() {
     <HubLayout
       title="Inspections"
       subtitle={subtitle}
-      kpis={cards.map(c => (
-        <ScopedKPICard
-          key={c.module}
-          url={`/api/${c.module}/summary${scope}`}
-          title={c.title}
-          href={c.href}
-          icon={c.icon}
-        />
-      ))}
+      kpis={
+        <>
+          {cards.map(c => (
+            <ScopedKPICard
+              key={c.module}
+              url={`/api/${c.module}/summary${scope}`}
+              title={c.title}
+              href={c.href}
+              icon={c.icon}
+            />
+          ))}
+          <CustomCardsForHub parentModule="inspections" scope={scope} />
+        </>
+      }
       table={<InspectionsTable />}
       expandHref="/inspections/full"
     />

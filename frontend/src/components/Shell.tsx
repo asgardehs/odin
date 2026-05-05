@@ -20,12 +20,14 @@ export default function Shell() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // Custom tables — still rendered as a flat list at the bottom of the
-  // sidebar until Phase 8 routes them into their parent hubs.
+  // Custom tables: only the top-level ones (parent_module='none')
+  // surface in the sidebar. Tables with a parent hub (facilities /
+  // employees / inspections) appear as extra KPI cards inside that
+  // hub instead of in nav.
   const customTables = useCustomTablesList(user?.role === 'admin');
-  const sortedCustomTables = [...customTables].sort((a, b) =>
-    a.display_name.localeCompare(b.display_name),
-  );
+  const sortedCustomTables = customTables
+    .filter(t => t.parent_module === 'none')
+    .sort((a, b) => a.display_name.localeCompare(b.display_name));
 
   const isAdmin = user?.role === 'admin';
 

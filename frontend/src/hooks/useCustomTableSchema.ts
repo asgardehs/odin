@@ -28,6 +28,8 @@ export interface CustomRelation {
   is_active: boolean;
 }
 
+export type ParentModule = 'none' | 'facilities' | 'employees' | 'inspections';
+
 export interface CustomTable {
   id: number;
   name: string;
@@ -36,6 +38,7 @@ export interface CustomTable {
   icon?: string | null;
   display_order: number;
   is_active: boolean;
+  parent_module: ParentModule;
   created_at: string;
   updated_at: string;
   fields: CustomField[];
