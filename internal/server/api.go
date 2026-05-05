@@ -439,6 +439,11 @@ func (s *Server) apiRoutes() {
 	// -- Dashboard summary --
 	s.mux.HandleFunc("GET /api/dashboard/counts", s.handleDashboardCounts)
 
+	// -- Per-module KPI summary endpoints (Phase 2 stubs) --
+	// Each feeds one KPICard on a hub. Stubs return the canonical shape
+	// with no live aggregates; Phase 3+ replaces them per module.
+	s.registerSummaryRoutes()
+
 	// -- Lookups (dropdown reference data) --
 	// Server-side whitelist of allowed tables lives in
 	// internal/repository/lookup.go; unknown tables return 404.
