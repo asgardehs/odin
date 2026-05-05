@@ -1,22 +1,8 @@
 import { useNavigate } from 'react-router';
-import { type ColumnDef } from '@tanstack/react-table';
-import { DataTable, type Row } from '../../components/DataTable';
+import { InspectionsTable } from '../../components/InspectionsTable';
 
-const columns: ColumnDef<Row>[] = [
-  { accessorKey: 'inspection_number', header: 'Inspection #' },
-  { accessorKey: 'inspection_date', header: 'Date', cell: ({ getValue }) => String(getValue() ?? '—') },
-  {
-    accessorKey: 'status',
-    header: 'Status',
-    cell: ({ getValue }) => (
-      <span className="capitalize text-[var(--color-fg)] text-xs">
-        {String(getValue() ?? '—')}
-      </span>
-    ),
-  },
-  { accessorKey: 'overall_result', header: 'Result', cell: ({ getValue }) => String(getValue() ?? '—') },
-];
-
+// Standalone fullscreen table view. Mounted at /inspections/full as the
+// Expand target from the Inspections hub.
 export default function InspectionList() {
   const navigate = useNavigate();
   return (
@@ -31,11 +17,7 @@ export default function InspectionList() {
           + New Inspection
         </button>
       </div>
-      <DataTable
-        columns={columns}
-        apiUrl="/api/inspections"
-        onRowClick={(row) => navigate(`/inspections/${row.id}`)}
-      />
+      <InspectionsTable />
     </div>
   );
 }

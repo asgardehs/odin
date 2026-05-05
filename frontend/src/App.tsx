@@ -27,6 +27,7 @@ import TrainingForm from './pages/modules/TrainingForm';
 import InspectionList from './pages/modules/InspectionList';
 import InspectionDetail from './pages/modules/InspectionDetail';
 import InspectionForm from './pages/modules/InspectionForm';
+import InspectionsHub from './pages/modules/InspectionsHub';
 import AuditList from './pages/modules/AuditList';
 import AuditDetail from './pages/modules/AuditDetail';
 import AuditForm from './pages/modules/AuditForm';
@@ -116,7 +117,8 @@ function AppRoutes() {
           <Route path="training/:id" element={<TrainingDetail />} />
           <Route path="training/:id/edit" element={<TrainingForm />} />
 
-          <Route path="inspections" element={<InspectionList />} />
+          <Route path="inspections" element={<InspectionsHub />} />
+          <Route path="inspections/full" element={<InspectionList />} />
           <Route path="inspections/new" element={<InspectionForm />} />
           <Route path="inspections/:id" element={<InspectionDetail />} />
           <Route path="inspections/:id/edit" element={<InspectionForm />} />
