@@ -49,7 +49,7 @@ func (s *Server) registerSummaryRoutes() {
 
 	// Employees hub
 	s.mux.HandleFunc("GET /api/training/summary", s.handleTrainingSummary)
-	s.mux.HandleFunc("GET /api/ppe/summary", s.summaryStub("ppe_items"))
+	s.mux.HandleFunc("GET /api/ppe/summary", s.handlePPESummary)
 	s.mux.HandleFunc("GET /api/incidents/summary", s.handleIncidentsSummary)
 
 	// Inspections hub
@@ -58,24 +58,6 @@ func (s *Server) registerSummaryRoutes() {
 
 	// Top-level Dashboard only — has no list page or hub of its own.
 	s.mux.HandleFunc("GET /api/osha-300/summary", s.handleOSHA300Summary)
-}
-
-// summaryStub returns a handler that derives only the Empty flag from a
-// COUNT(*) on the given table. Phase 3+ replaces each stub with a real
-// aggregate; the Empty-from-count behavior carries forward unchanged.
-//
-// table is a hard-coded literal at every call site (never user input), so
-// concatenation into the query is safe.
-func (s *Server) summaryStub(table string) http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
-		val, err := s.db.QueryVal("SELECT COUNT(*) FROM " + table)
-		if err != nil {
-			writeError(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		n, _ := val.(int64)
-		writeJSON(w, Summary{Empty: n == 0})
-	}
 }
 
 // facilityFilter pulls ?facility_id=X off the request and returns a SQL
@@ -241,6 +223,46 @@ func (s *Server) handleDischargePointsSummary(w http.ResponseWriter, r *http.Req
 	writeJSON(w, Summary{
 		Primary:   &SummaryMetric{Label: "active outfalls", Value: active},
 		Secondary: &SummaryMetric{Label: "to impaired waters", Value: impaired},
+	})
+}
+
+// handlePPESummary aggregates PPE attention items for the Employees hub.
+//
+//   - primary   = in-service items expiring in ≤30 days (replacement queue)
+//   - secondary = items with status='inspection_due' (re-inspection queue)
+//   - status    = derived from primary via statusForOpenItems
+//   - empty     = true when no PPE items exist in scope
+//
+// "In service" = status IN ('available','assigned'). Items in
+// out_of_service / retired / lost are excluded from expiry counting —
+// their expiration_date no longer matters operationally.
+func (s *Server) handlePPESummary(w http.ResponseWriter, r *http.Request) {
+	where, args := facilityFilter(r, "establishment_id")
+	row, err := s.db.QueryRow(`
+		SELECT
+		  CAST(COALESCE(SUM(CASE WHEN status IN ('available','assigned')
+		         AND expiration_date IS NOT NULL
+		         AND expiration_date >= date('now')
+		         AND expiration_date <= date('now', '+30 days') THEN 1 ELSE 0 END), 0) AS INTEGER) AS expiring_30,
+		  CAST(COALESCE(SUM(CASE WHEN status = 'inspection_due' THEN 1 ELSE 0 END), 0) AS INTEGER) AS inspection_due,
+		  COUNT(*) AS total
+		FROM ppe_items
+		WHERE 1=1`+where, args...)
+	if err != nil {
+		writeError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	total, _ := row["total"].(int64)
+	if total == 0 {
+		writeJSON(w, Summary{Empty: true})
+		return
+	}
+	expiring30, _ := row["expiring_30"].(int64)
+	inspectionDue, _ := row["inspection_due"].(int64)
+	writeJSON(w, Summary{
+		Primary:   &SummaryMetric{Label: "expiring ≤30 days", Value: expiring30},
+		Secondary: &SummaryMetric{Label: "inspection due", Value: inspectionDue},
+		Status:    statusForOpenItems(expiring30),
 	})
 }
 

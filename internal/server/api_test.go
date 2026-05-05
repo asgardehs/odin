@@ -697,6 +697,58 @@ func TestOSHA300Summary(t *testing.T) {
 	}
 }
 
+func TestPPESummary(t *testing.T) {
+	tc := newTestServerWithDB(t)
+
+	resp := fetchSummary(t, tc, "/api/ppe/summary")
+	if empty, _ := resp["empty"].(bool); !empty {
+		t.Errorf("empty case: empty = %v, want true", resp["empty"])
+	}
+
+	if err := tc.srv.db.ExecParams(
+		`INSERT INTO establishments (id, name, street_address, city, state, zip, naics_code)
+		 VALUES (2, 'F2', '1', 'C', 'I', '62701', '325199')`,
+	); err != nil {
+		t.Fatalf("seed est 2: %v", err)
+	}
+	// ppe_types are seeded by the migration.
+	insert := func(estID int, num string, daysOut int, status string) {
+		t.Helper()
+		var expr string
+		if daysOut < 0 {
+			expr = "date('now', '" + strconv.Itoa(daysOut) + " days')"
+		} else {
+			expr = "date('now', '+" + strconv.Itoa(daysOut) + " days')"
+		}
+		sql := `INSERT INTO ppe_items (establishment_id, ppe_type_id, asset_tag, status, expiration_date)
+		        VALUES (?, 1, ?, ?, ` + expr + `)`
+		if err := tc.srv.db.ExecParams(sql, estID, num, status); err != nil {
+			t.Fatalf("insert ppe %s: %v", num, err)
+		}
+	}
+	insert(1, "P-A", 10, "available")        // in-service, ≤30d → primary
+	insert(1, "P-B", 20, "assigned")         // in-service, ≤30d → primary
+	insert(1, "P-C", 10, "retired")          // expired-window but retired → not counted
+	insert(1, "P-D", 90, "inspection_due")   // primary 0 (not in available/assigned), secondary 1
+	insert(2, "P-E", 5, "assigned")          // fac 2
+
+	resp = fetchSummary(t, tc, "/api/ppe/summary")
+	if got := summaryValue(t, resp, "primary"); got != 3 {
+		t.Errorf("org-wide: primary = %d, want 3", got)
+	}
+	if got := summaryValue(t, resp, "secondary"); got != 1 {
+		t.Errorf("org-wide: secondary (inspection_due) = %d, want 1", got)
+	}
+	if got := resp["status"]; got != "warn" {
+		t.Errorf("org-wide: status = %v, want warn (3 in primary)", got)
+	}
+
+	resp = fetchSummary(t, tc, "/api/ppe/summary?facility_id=2")
+	if got := summaryValue(t, resp, "primary"); got != 1 {
+		t.Errorf("fac2: primary = %d, want 1", got)
+	}
+}
+
 func TestNPDESPermitsSummary(t *testing.T) {
 	tc := newTestServerWithDB(t)
 
