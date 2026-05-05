@@ -5,8 +5,9 @@ import Shell from './components/Shell';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Account from './pages/Account';
-import Placeholder from './pages/Placeholder';
 import DevNullPreview from './pages/DevNullPreview';
+import Documents from './pages/Documents';
+import AdminLanding from './pages/admin/AdminLanding';
 import EstablishmentList from './pages/modules/EstablishmentList';
 import EstablishmentDetail from './pages/modules/EstablishmentDetail';
 import EstablishmentForm from './pages/modules/EstablishmentForm';
@@ -178,11 +179,9 @@ function AppRoutes() {
 
           <Route path="account" element={<Account />} />
 
-          {/* SDS and Documents — placeholder until Phase 7 builds the page */}
-          <Route path="documents" element={<Placeholder />} />
+          <Route path="documents" element={<Documents />} />
 
-          {/* Admin landing — placeholder until Phase 7 builds the hub */}
-          <Route path="admin" element={<AdminOnly><Placeholder /></AdminOnly>} />
+          <Route path="admin" element={<AdminOnly><AdminLanding /></AdminOnly>} />
 
           <Route path="admin/users" element={<AdminOnly><UsersList /></AdminOnly>} />
           <Route path="admin/users/new" element={<AdminOnly><UserForm /></AdminOnly>} />

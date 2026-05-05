@@ -35,7 +35,7 @@ export default function SchemaList() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--color-fg)]">Custom Tables</h1>
+          <h1 className="text-2xl font-bold text-[var(--color-fg)]">Custom Table Builder</h1>
           <p className="text-sm text-[var(--color-comment)] mt-1">
             Admin-built tables rendered by the generic record UI. Deactivated tables keep their data
             but are hidden from the sidebar and non-admin UI.
