@@ -5,7 +5,6 @@ import Shell from './components/Shell';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Account from './pages/Account';
-import DevNullPreview from './pages/DevNullPreview';
 import Documents from './pages/Documents';
 import AdminLanding from './pages/admin/AdminLanding';
 import EstablishmentList from './pages/modules/EstablishmentList';
@@ -194,10 +193,6 @@ function AppRoutes() {
           <Route path="admin/import" element={<AdminOnly><ImportPage /></AdminOnly>} />
 
           <Route path="osha-ita" element={<AdminOnly><ExportPage /></AdminOnly>} />
-
-          {/* Phase 2 component preview — not in nav, not user-facing.
-              Delete once Phase 3 wires the real top-level Dashboard. */}
-          <Route path="devnull" element={<AdminOnly><DevNullPreview /></AdminOnly>} />
         </Route>
       </Routes>
     </BrowserRouter>

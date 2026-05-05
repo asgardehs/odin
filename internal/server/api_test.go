@@ -890,31 +890,6 @@ func TestInventorySummaries(t *testing.T) {
 	}
 }
 
-// TestDashboardCounts verifies the dashboard endpoint returns counts.
-func TestDashboardCounts(t *testing.T) {
-	tc := newTestServerWithDB(t)
-
-	req := httptest.NewRequest("GET", "/api/dashboard/counts", nil)
-	w := httptest.NewRecorder()
-	tc.srv.mux.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("GET /api/dashboard/counts = %d; body: %s", w.Code, w.Body.String())
-	}
-
-	var counts map[string]any
-	if err := json.NewDecoder(w.Body).Decode(&counts); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-
-	// Should have all expected keys.
-	expected := []string{"establishments", "employees", "open_incidents", "open_cas", "chemicals", "active_permits", "expiring_permits"}
-	for _, key := range expected {
-		if _, ok := counts[key]; !ok {
-			t.Errorf("missing key %q in dashboard counts", key)
-		}
-	}
-}
 
 // TestPagination verifies pagination parameters work.
 func TestPagination(t *testing.T) {

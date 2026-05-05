@@ -436,12 +436,8 @@ func (s *Server) apiRoutes() {
 		"type_code", "type_name",
 	)
 
-	// -- Dashboard summary --
-	s.mux.HandleFunc("GET /api/dashboard/counts", s.handleDashboardCounts)
-
-	// -- Per-module KPI summary endpoints (Phase 2 stubs) --
-	// Each feeds one KPICard on a hub. Stubs return the canonical shape
-	// with no live aggregates; Phase 3+ replaces them per module.
+	// -- Per-module KPI summary endpoints --
+	// Each feeds one KPICard on the top-level Dashboard or a hub.
 	s.registerSummaryRoutes()
 
 	// -- Lookups (dropdown reference data) --
@@ -461,25 +457,3 @@ func (s *Server) apiRoutes() {
 	s.registerOSHAITARoutes()
 }
 
-func (s *Server) handleDashboardCounts(w http.ResponseWriter, r *http.Request) {
-	queries := map[string]string{
-		"establishments":   "SELECT COUNT(*) FROM establishments",
-		"employees":        "SELECT COUNT(*) FROM employees WHERE is_active = 1",
-		"open_incidents":   "SELECT COUNT(*) FROM incidents WHERE status != 'closed'",
-		"open_cas":         "SELECT COUNT(*) FROM corrective_actions WHERE status NOT IN ('completed', 'verified')",
-		"chemicals":        "SELECT COUNT(*) FROM chemicals WHERE is_active = 1",
-		"active_permits":   "SELECT COUNT(*) FROM permits WHERE status = 'active'",
-		"expiring_permits": "SELECT COUNT(*) FROM permits WHERE status = 'active' AND expiration_date <= date('now', '+90 days')",
-	}
-
-	counts := make(map[string]any, len(queries))
-	for key, sql := range queries {
-		val, err := s.db.QueryVal(sql)
-		if err != nil {
-			counts[key] = nil
-			continue
-		}
-		counts[key] = val
-	}
-	writeJSON(w, counts)
-}

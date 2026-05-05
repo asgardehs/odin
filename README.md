@@ -62,6 +62,35 @@ intentionally deferred.
 The initial release ships when the "in progress" list is complete. Backlog
 items land in subsequent releases as time permits.
 
+## Application Structure
+
+The sidebar collapses to six top-level destinations. Each one is a single
+click from anywhere in the app:
+
+- **Dashboard** — six KPI cards summarizing the whole compliance posture:
+  expiring permits, expiring training, open audit findings, open incidents,
+  sample events needing finalization, and OSHA 300 status. Cards re-scope
+  live when a facility is selected from the global facility selector.
+- **Facilities** — hub for facility-scoped inventories: permits, NPDES
+  permits, emission units, waste streams, chemicals, storage locations,
+  outfalls. Each card deep-links to the underlying module list.
+- **Employees** — hub for people-scoped activity: training, PPE, incidents.
+- **Inspections** — hub for verification activities: audit findings, sample
+  events. Routine inspections fill the records table.
+- **SDS and Documents** — SWPPPs (live) and SDS Library (planned for a
+  future release).
+- **Admin** — Users, Custom Table Builder, Import, OSHA ITA Export.
+
+Selecting a facility from the sidebar selector scopes every KPI card and
+the underlying module pages — Odin's "currently selected facility" is
+global app state that persists per user. The records table inside each hub
+always shows the full list so you can navigate between facilities from
+inside the hub.
+
+Custom tables (built via the Custom Table Builder) declare which hub they
+live on. Top-level custom tables get their own sidebar entry; hub-scoped
+ones surface as extra KPI cards on their chosen hub.
+
 ## Requirements
 
 Building Odin from source requires:
