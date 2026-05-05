@@ -28,3 +28,4 @@ frontend/dist/
 *.db-shm
 .worktrees/
 .gitnexus
+.codegraph
